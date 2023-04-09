@@ -52,7 +52,7 @@ plt.show()
 time_end = 30
 
 t = 0
-dt = 0.01
+dt = 0.04
 
 while t < time_end:
     for y in range(1, cell_count):
