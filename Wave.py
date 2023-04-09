@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Mar 31 06:48:18 2023
+Created on Sun Apr  9 12:34:04 2023
 
-Diffusion Equation Solver
+Wave Equation
 """
 
 import matplotlib as mlib
@@ -12,18 +12,22 @@ import numericslib as nlib
 
 
 # Pre-processing
-alpha = 100000000
+c = 10000
+c_squared = c**2
 
 grid_size = 10
-cell_size = 0.05
+cell_size = 0.04
 
 cell_area = cell_size ** 2
 
 cell_count = int(grid_size/cell_size)
 
-charge = np.zeros((cell_count + 2, cell_count + 2))
+displacement = np.zeros((cell_count + 2, cell_count + 2))
+displacement_delta = np.zeros((cell_count + 2, cell_count + 2))
 current = np.zeros((cell_count + 2, cell_count + 2, 2))
-charge_next = np.zeros((cell_count + 2, cell_count + 2))
+
+displacement_next = np.zeros((cell_count + 2, cell_count + 2))
+displacement_delta_next = np.zeros((cell_count + 2, cell_count + 2))
 current_next = np.zeros((cell_count + 2, cell_count + 2, 2))
 
 # Set initial values
@@ -36,11 +40,11 @@ for y in range(1, cell_count):
 
 for y in range(1, cell_count):
     for x in range(1, cell_count):
-        if np.sqrt(np.dot(position[y,x], position[y,x])) <= 2:
-            charge[y][x] = 0.05
+        if (position[y, x, 0] > -4.1) & (position[y, x, 0] < -3.9):
+            displacement[y][x] = 0.05
 
 plt.figure(figsize=(10,10))
-plt.pcolormesh(charge, vmin=0, vmax=0.05)
+plt.pcolormesh(displacement, vmin=-0.1, vmax=0.1, cmap=plt.colormaps['seismic'])
 plt.show()
 
 
@@ -48,16 +52,17 @@ plt.show()
 time_end = 30
 
 t = 0
-dt = 0.1
+dt = 0.01
 
 while t < time_end:
     for y in range(1, cell_count):
         for x in range(1, cell_count):
-            charge_next[y, x] = charge[y, x] + dt * (- cell_area * nlib.divergence_flux_2d(current, x, y, cell_size))
-            
-            current_next[y, x] = - alpha * cell_area * nlib.gradient_flux_2d(charge, x, y, cell_size)
+            displacement_next[y, x] = displacement[y, x] + dt * displacement_delta[y, x]
+            displacement_delta_next[y, x] = displacement_delta[y, x] + dt * cell_area * c_squared * nlib.divergence_flux_2d(current, x, y, cell_size)
+            current_next[y, x] = cell_area * nlib.gradient_flux_2d(displacement, x, y, cell_size)
     
-    charge = charge_next
+    displacement = displacement_next
+    displacement_delta = displacement_delta_next
     current = current_next
     
     t += dt
@@ -67,7 +72,7 @@ while t < time_end:
 
 # Post-processing
 plt.figure(figsize=(10,10))
-plt.pcolormesh(charge, vmin=0, vmax=0.05)
+plt.pcolormesh(displacement, vmin=-0.1, vmax=0.1, cmap=plt.colormaps['seismic'])
 plt.show()
 
 plt.figure(figsize=(10,10))
