@@ -19,6 +19,7 @@ grid_size = 10
 cell_size = 0.04
 
 cell_area = cell_size ** 2
+cell_area_inv = 1/cell_area
 
 cell_count = int(grid_size/cell_size)
 
@@ -58,8 +59,8 @@ while t < time_end:
     for y in range(1, cell_count):
         for x in range(1, cell_count):
             displacement_next[y, x] = displacement[y, x] + dt * displacement_delta[y, x]
-            displacement_delta_next[y, x] = displacement_delta[y, x] + dt * cell_area * c_squared * nlib.divergence_flux_2d(current, x, y, cell_size)
-            current_next[y, x] = cell_area * nlib.gradient_flux_2d(displacement, x, y, cell_size)
+            displacement_delta_next[y, x] = displacement_delta[y, x] + dt * cell_area_inv * c_squared * nlib.divergence_flux_2d(current, x, y, cell_size)
+            current_next[y, x] = cell_area_inv * nlib.gradient_flux_2d(displacement, x, y, cell_size)
     
     displacement = displacement_next
     displacement_delta = displacement_delta_next
