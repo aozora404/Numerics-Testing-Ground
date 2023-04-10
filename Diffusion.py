@@ -18,6 +18,7 @@ grid_size = 10
 cell_size = 0.05
 
 cell_area = cell_size ** 2
+cell_area_inv = 1/cell_area
 
 cell_count = int(grid_size/cell_size)
 
@@ -53,9 +54,9 @@ dt = 0.1
 while t < time_end:
     for y in range(1, cell_count):
         for x in range(1, cell_count):
-            charge_next[y, x] = charge[y, x] + dt * (- cell_area * nlib.divergence_flux_2d(current, x, y, cell_size))
+            charge_next[y, x] = charge[y, x] + dt * (- cell_area_inv * nlib.divergence_flux_2d(current, x, y, cell_size))
             
-            current_next[y, x] = - alpha * cell_area * nlib.gradient_flux_2d(charge, x, y, cell_size)
+            current_next[y, x] = - alpha * cell_area_inv * nlib.gradient_flux_2d(charge, x, y, cell_size)
     
     charge = charge_next
     current = current_next
