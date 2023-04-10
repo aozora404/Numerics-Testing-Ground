@@ -9,17 +9,18 @@ import matplotlib as mlib
 import matplotlib.pyplot as plt
 import numpy as np
 import numericslib as nlib
+import math
 
 
 # Pre-processing
-c = 10000
+c = 2
 c_squared = c**2
 
-grid_size = 10
-cell_size = 0.04
+grid_size = 9
+cell_size = 0.03
 
 cell_area = cell_size ** 2
-cell_area_inv = 1/cell_area
+cell_size_inv = 1/cell_size
 
 cell_count = int(grid_size/cell_size)
 
@@ -41,8 +42,8 @@ for y in range(1, cell_count):
 
 for y in range(1, cell_count):
     for x in range(1, cell_count):
-        if (position[y, x, 0] > -4.1) & (position[y, x, 0] < -3.9):
-            displacement[y][x] = 0.05
+        if np.sqrt(np.dot(position[y,x], position[y,x])) <= 0.5:
+            displacement[y][x] = 0.05 * math.cos(math.pi * np.sqrt(np.dot(position[y,x], position[y,x])))
 
 plt.figure(figsize=(10,10))
 plt.pcolormesh(displacement, vmin=-0.1, vmax=0.1, cmap=plt.colormaps['seismic'])
@@ -50,17 +51,17 @@ plt.show()
 
 
 # Solver
-time_end = 30
+time_end = 10
 
 t = 0
-dt = 0.04
+dt = 0.001
 
 while t < time_end:
     for y in range(1, cell_count):
         for x in range(1, cell_count):
             displacement_next[y, x] = displacement[y, x] + dt * displacement_delta[y, x]
-            displacement_delta_next[y, x] = displacement_delta[y, x] + dt * cell_area_inv * c_squared * nlib.divergence_flux_2d(current, x, y, cell_size)
-            current_next[y, x] = cell_area_inv * nlib.gradient_flux_2d(displacement, x, y, cell_size)
+            displacement_delta_next[y, x] = displacement_delta[y, x] + dt * cell_size_inv * c_squared * nlib.divergence_flux_2d(current, x, y)
+            current_next[y, x] = cell_size_inv * nlib.gradient_flux_2d(displacement, x, y)
     
     displacement = displacement_next
     displacement_delta = displacement_delta_next
@@ -70,6 +71,9 @@ while t < time_end:
     
     print(t)
     
+    plt.figure(figsize=(10,10))
+    plt.pcolormesh(displacement, vmin=-0.1, vmax=0.1, cmap=plt.colormaps['seismic'])
+    plt.show()
 
 # Post-processing
 plt.figure(figsize=(10,10))
