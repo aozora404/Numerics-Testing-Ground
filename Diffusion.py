@@ -46,10 +46,10 @@ plt.show()
 
 
 # Solver
-time_end = 0.5
+time_end = 1
 
 t = 0
-dt = 0.001
+dt = 0.002
 
 while t < time_end:
     for y in range(1, cell_count):

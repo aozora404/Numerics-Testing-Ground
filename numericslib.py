@@ -27,14 +27,22 @@ def curl_flux(vector_function, x, y, z):
                            vector_function[z, y, x + 1, 1] - vector_function[z, y, x - 1, 1]
                          - vector_function[z, y + 1, x, 0] + vector_function[z, y - 1, x, 0]])
 
+def dot_product(vector_a, vector_b):
+    return (vector_a[1] * vector_b[1] + vector_a[2] * vector_b[2] + vector_a[3] * vector_b[3])
+
+def cross_product(vector_a, vector_b):
+    return np.array(vector_a[2] * vector_b[3] - vector_a[3] * vector_b[2],
+                    vector_a[3] * vector_b[1] - vector_a[1] * vector_b[3],
+                    vector_a[1] * vector_b[2] - vector_a[2] * vector_b[1])
+
 
 def gradient_flux_2d(scalar_function, x, y):
-    return 0.5 * np.array([scalar_function[y, x + 1] - scalar_function[y, x - 1], 
-                           scalar_function[y + 1, x] - scalar_function[y - 1, x]])
+    return 1/48 * np.array([scalar_function[y - 1, x + 1] + 22 * scalar_function[y, x + 1] + scalar_function[y + 1, x + 1] - scalar_function[y - 1, x - 1] - 22 * scalar_function[y, x - 1] - scalar_function[y + 1, x - 1], 
+                            scalar_function[y + 1, x - 1] + 22 * scalar_function[y + 1, x] + scalar_function[y + 1, x + 1] - scalar_function[y - 1, x - 1] - 22 * scalar_function[y - 1, x] - scalar_function[y - 1, x + 1]])
     
 def divergence_flux_2d(vector_function, x, y):
-    return 0.5 * (vector_function[y, x + 1, 0] - vector_function[y, x - 1, 0] + 
-                  vector_function[y + 1, x, 1] - vector_function[y - 1, x, 1])
+    return 1/48 * (vector_function[y - 1, x + 1, 0] + 22 * vector_function[y, x + 1, 0] + vector_function[y + 1, x + 1, 0] - vector_function[y - 1, x - 1, 0] - 22 * vector_function[y, x - 1, 0] - vector_function[y + 1, x - 1, 0] + 
+                   vector_function[y + 1, x - 1, 1] + 22 * vector_function[y + 1, x, 1] + vector_function[y + 1, x + 1, 1] - vector_function[y - 1, x - 1, 1] - 22 * vector_function[y - 1, x, 1] - vector_function[y - 1, x + 1, 1])
     
 def curl_flux_2d(vector_function, x, y):
     return 0.5 * (vector_function[y, x + 1, 1] - vector_function[y, x - 1, 1]

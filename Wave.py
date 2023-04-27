@@ -16,8 +16,8 @@ import math
 c = 2
 c_squared = c**2
 
-grid_size = 9
-cell_size = 0.03
+grid_size = 10
+cell_size = 0.04
 
 cell_area = cell_size ** 2
 cell_size_inv = 1/cell_size
