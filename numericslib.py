@@ -37,12 +37,12 @@ def cross_product(vector_a, vector_b):
 
 
 def gradient_flux_2d(scalar_function, x, y):
-    return 1/48 * np.array([scalar_function[y - 1, x + 1] + 22 * scalar_function[y, x + 1] + scalar_function[y + 1, x + 1] - scalar_function[y - 1, x - 1] - 22 * scalar_function[y, x - 1] - scalar_function[y + 1, x - 1], 
-                            scalar_function[y + 1, x - 1] + 22 * scalar_function[y + 1, x] + scalar_function[y + 1, x + 1] - scalar_function[y - 1, x - 1] - 22 * scalar_function[y - 1, x] - scalar_function[y - 1, x + 1]])
+    return 0.5 * np.array([scalar_function[y, x + 1] - scalar_function[y, x - 1], 
+                           scalar_function[y + 1, x] - scalar_function[y - 1, x]])
     
 def divergence_flux_2d(vector_function, x, y):
-    return 1/48 * (vector_function[y - 1, x + 1, 0] + 22 * vector_function[y, x + 1, 0] + vector_function[y + 1, x + 1, 0] - vector_function[y - 1, x - 1, 0] - 22 * vector_function[y, x - 1, 0] - vector_function[y + 1, x - 1, 0] + 
-                   vector_function[y + 1, x - 1, 1] + 22 * vector_function[y + 1, x, 1] + vector_function[y + 1, x + 1, 1] - vector_function[y - 1, x - 1, 1] - 22 * vector_function[y - 1, x, 1] - vector_function[y - 1, x + 1, 1])
+    return 0.5 * (vector_function[y, x + 1, 0] - vector_function[y, x - 1, 0] + 
+                  vector_function[y + 1, x, 1] - vector_function[y - 1, x, 1])
     
 def curl_flux_2d(vector_function, x, y):
     return 0.5 * (vector_function[y, x + 1, 1] - vector_function[y, x - 1, 1]
