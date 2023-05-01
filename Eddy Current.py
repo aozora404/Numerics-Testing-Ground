@@ -11,25 +11,27 @@ import numpy as np
 import numericslib as nlib
 
 # Pre-processing
+mu_0 = 1.25663706212 * 10**(-6)
+mu_0_inverse = 1/mu_0
+
 permeability = 1.256665 * 10**(-6)
 permeability_inverse = 1/permeability
 
-mass = 0.001
+mass = 0.01
 mass_inverse = 1/mass
 
-coil_current = 500
 coil_radius = 1
 coil_radius_squared = coil_radius**2
-coil_origin = np.array([2,0])
+coil_origin = np.array([0,0])
+coil_magnetic_field_strength = 0.001
 
-alpha = 0.5 * permeability * coil_current
+alpha = 0.5 * coil_magnetic_field_strength
+initial_velocity = 1
 
-initial_velocity = 10
+grid_size = 0.5
+cell_size = 0.002
 
-grid_size = 2
-cell_size = 0.01
-
-cell_volume = cell_size ** 3
+cell_volume = cell_size ** 2
 cell_size_inv = 1/cell_size
 
 cell_count = int(grid_size/cell_size)
@@ -38,7 +40,7 @@ cell_count = int(grid_size/cell_size)
 current = np.zeros((cell_count + 2, cell_count + 2, 2))
 conductivity = np.zeros((cell_count + 2, cell_count + 2))
 
-magnetic_field = np.zeros((cell_count + 2, cell_count + 2, 2))
+magnetic_field = np.zeros((cell_count + 2, cell_count + 2))
 
 
 magnetic_potential = np.zeros((cell_count + 2, cell_count + 2, 2))
@@ -77,7 +79,7 @@ for y in range(1, cell_count):
 
 for y in range(1, cell_count):
     for x in range(1, cell_count):
-        if np.sqrt(np.dot(relative_position[y,x], relative_position[y,x])) <= 0.5:
+        if np.sqrt(np.dot(relative_position[y,x], relative_position[y,x])) <= 0.25:
             conductivity[y,x] = 3.5 * 10**7
                 
 for y in range(1, cell_count):
@@ -93,7 +95,7 @@ magnetic_potential_embedded_previous = magnetic_potential_embedded
         
 
 plt.figure(figsize=(10,10))
-plt.quiver(relative_position[::2,::2,0], relative_position[::2,::2,1], magnetic_potential[::2,::2,0]+magnetic_potential_embedded[::2,::2,0], magnetic_potential[::2,::2,1]+magnetic_potential_embedded[::2,::2,1])
+plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], magnetic_potential[::4,::4,0]+magnetic_potential_embedded[::4,::4,0], magnetic_potential[::4,::4,1]+magnetic_potential_embedded[::4,::4,1])
 plt.show()
 
 
@@ -101,7 +103,7 @@ plt.show()
 time_end = 1
 
 t = 0
-dt = 0.001
+dt = 0.00005
 
 while t < time_end:
     
@@ -131,22 +133,22 @@ while t < time_end:
     # Current and Field
     for y in range(1, cell_count):
         for x in range(1, cell_count):
-            current[y,x] = - conductivity[y,x] * (magnetic_potential_delta[y,x] + magnetic_potential_embedded_delta[y,x])
-            magnetic_field[y,x] = cell_size_inv * nlib.curl_flux_2d(magnetic_potential + magnetic_potential_embedded , x, y)
+            if conductivity[y,x] != 0:
+                current[y,x] = - conductivity[y,x] * (magnetic_potential_delta[y,x] + magnetic_potential_embedded_delta[y,x])
+                magnetic_field[y,x] = cell_size_inv * nlib.curl_flux_2d(magnetic_potential + magnetic_potential_embedded , x, y)
     
     # Dynamics
     force = np.zeros(2)
     for y in range(1, cell_count):
         for x in range(1, cell_count):
-            force += magnetic_field[y,x] * np.array([current[y,x,1], -current[y,x,0]])
+            if conductivity[y,x] != 0:
+                force += magnetic_field[y,x] * np.array([current[y,x,1], -current[y,x,0]])
     
     force *= cell_volume
     velocity_next = velocity + dt * force * mass_inverse
     position_next = position + dt * velocity 
     
     # Time step
-    
-    
     magnetic_potential_previous = magnetic_potential
     magnetic_potential = magnetic_potential_next
     magnetic_potential_current_x = magnetic_potential_current_x_next
@@ -165,15 +167,18 @@ while t < time_end:
     print("")
     
     plt.figure(figsize=(10,10))
-    plt.quiver(relative_position[::2,::2,0], relative_position[::2,::2,1], magnetic_potential[::2,::2,0] + magnetic_potential_embedded[::2,::2,0], magnetic_potential[::2,::2,1] + magnetic_potential_embedded[::2,::2,1])
+    plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], current[::4,::4,0], current[::4,::4,1])
     plt.show()
     
+    plt.figure(figsize=(10,10))
+    plt.pcolormesh(magnetic_field, cmap=plt.colormaps['seismic'])
+    plt.show()
 
 # Post-processing
 plt.figure(figsize=(10,10))
-plt.quiver(relative_position[::2,::2,0], relative_position[::2,::2,1], magnetic_potential[::2,::2,0], magnetic_potential[::2,::2,1])
+plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], magnetic_potential[::4,::4,0], magnetic_potential[::4,::4,1])
 plt.show()
 
 plt.figure(figsize=(10,10))
-plt.quiver(relative_position[::2,::2,0], relative_position[::2,::2,1], current[::2,::2,0], current[::2,::2,1])
+plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], current[::4,::4,0], current[::4,::4,1])
 plt.show()
