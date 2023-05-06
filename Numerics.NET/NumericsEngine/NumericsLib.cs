@@ -1,5 +1,3 @@
-using System;
-
 namespace NumericsEngine
 {
     public static class UniversalConstants
@@ -58,7 +56,7 @@ namespace NumericsEngine
 
         public static double CurlFlux2D(double[,,] VectorFunction, int x, int y)
         {
-            return  0.5*(VectorFunction[y, x + 1, 1] - VectorFunction[y, x - 1, 1]
+            return 0.5 * (VectorFunction[y, x + 1, 1] - VectorFunction[y, x - 1, 1]
                        - VectorFunction[y + 1, x, 0] + VectorFunction[y - 1, x, 0]);
         }
 

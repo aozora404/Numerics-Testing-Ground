@@ -10,26 +10,44 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numericslib as nlib
 
+# Settings
+# Simulation settings
+grid_size = 22 # mm
+cell_size = 0.088 # mm
+time_step = 0.000008 # s
+time_end = 1 # s
+
+# Flying mass settings
+initial_velocity = 0 # mm s-1
+mass = 0.01 # kg
+object_radius = 10 # mm 
+material_conductivity = 3.5 * 10**1 # mm-2 kg-1 s3 A2
+material_magnetic_permeability = 1.256665 * 10**(-3) # mm kg s-2 A-2
+
+# Magnetic coil settings
+coil_radius = 200 # mm
+coil_magnetic_field_strength = -0.1 # kg s-2 A-1
+coil_distance = 208 # mm
+
+# Miscellaneous
+force_external_magnitude = 5000 # mm kg s-2
+
+
 # Pre-processing
-mu_0 = 1.25663706212 * 10**(-6)
+# Constants and Coefficients
+mu_0 = 1.25663706212 * 10**(-3) # kg mm s-2 A-2
 mu_0_inverse = 1/mu_0
 
-permeability = 1.256665 * 10**(-6)
+permeability = material_magnetic_permeability
 permeability_inverse = 1/permeability
 
-mass = 0.01
 mass_inverse = 1/mass
 
-coil_radius = 1
 coil_radius_squared = coil_radius**2
-coil_origin = np.array([0,0])
-coil_magnetic_field_strength = 0.001
+coil_origin = np.array([coil_distance,0])
 
 alpha = 0.5 * coil_magnetic_field_strength
-initial_velocity = 1
 
-grid_size = 0.5
-cell_size = 0.002
 
 cell_volume = cell_size ** 2
 cell_size_inv = 1/cell_size
@@ -37,6 +55,7 @@ cell_size_inv = 1/cell_size
 cell_count = int(grid_size/cell_size)
 
 
+# Initialize field grid
 current = np.zeros((cell_count + 2, cell_count + 2, 2))
 conductivity = np.zeros((cell_count + 2, cell_count + 2))
 
@@ -63,25 +82,32 @@ magnetic_potential_embedded_lagrangian = np.zeros((cell_count + 2, cell_count + 
 
 
 force = np.zeros(2)
+force_external = np.zeros(2)
 velocity = np.zeros(2)
 velocity_next = np.zeros(2)
 position = np.zeros(2)
 position_next = np.zeros(2)
 
+graph_time = np.array([])
+graph_position = np.array([])
+graph_velocity = np.array([])
+graph_force = np.array([])
+
 # Set initial values
+force_external = np.array([force_external_magnitude, 0])
 velocity = np.array([initial_velocity, 0])
 relative_position = np.zeros((cell_count + 2, cell_count + 2, 2))
 
 for y in range(1, cell_count):
     for x in range(1, cell_count):
-        relative_position[y,x,0] = -grid_size/2 + cell_size * x 
+        relative_position[y,x,0] = -grid_size/2 + cell_size * x
         relative_position[y,x,1] = -grid_size/2 + cell_size * y
 
 for y in range(1, cell_count):
     for x in range(1, cell_count):
-        if np.sqrt(np.dot(relative_position[y,x], relative_position[y,x])) <= 0.25:
-            conductivity[y,x] = 3.5 * 10**7
-                
+        if np.dot(relative_position[y,x], relative_position[y,x]) <= object_radius**2:
+            conductivity[y,x] = material_conductivity
+
 for y in range(1, cell_count):
     for x in range(1, cell_count):
         s = relative_position[y,x] + position - coil_origin
@@ -92,7 +118,7 @@ for y in range(1, cell_count):
             magnetic_potential_embedded[y,x] = alpha * np.array([-s[1], s[0]])
 
 magnetic_potential_embedded_previous = magnetic_potential_embedded
-        
+
 
 plt.figure(figsize=(10,10))
 plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], magnetic_potential[::4,::4,0]+magnetic_potential_embedded[::4,::4,0], magnetic_potential[::4,::4,1]+magnetic_potential_embedded[::4,::4,1])
@@ -100,10 +126,8 @@ plt.show()
 
 
 # Solver
-time_end = 1
-
 t = 0
-dt = 0.00005
+dt = time_step
 
 while t < time_end:
     
@@ -145,6 +169,9 @@ while t < time_end:
                 force += magnetic_field[y,x] * np.array([current[y,x,1], -current[y,x,0]])
     
     force *= cell_volume
+    
+    force += force_external
+    
     velocity_next = velocity + dt * force * mass_inverse
     position_next = position + dt * velocity 
     
@@ -160,6 +187,11 @@ while t < time_end:
 
     t += dt
     
+    graph_time = np.append(graph_time, [t])
+    graph_position = np.append(graph_position, [position[0]])
+    graph_velocity = np.append(graph_velocity, [velocity[0]])
+    graph_force = np.append(graph_force, [force[0]])
+    
     print(t)
     print("Position = ", position)
     print("Velocity = ", velocity)
@@ -169,12 +201,25 @@ while t < time_end:
     plt.figure(figsize=(10,10))
     plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], current[::4,::4,0], current[::4,::4,1])
     plt.show()
-    
+    """
     plt.figure(figsize=(10,10))
-    plt.pcolormesh(magnetic_field, cmap=plt.colormaps['seismic'])
+    plt.pcolormesh(magnetic_field, cmap=plt.colormaps['seismic'], vmin=-0.001, vmax=0.001)
     plt.show()
+    """
 
 # Post-processing
+plt.figure(figsize=(10,10))
+plt.scatter(graph_time, graph_position)
+plt.show()
+
+plt.figure(figsize=(10,10))
+plt.scatter(graph_time, graph_velocity)
+plt.show()
+
+plt.figure(figsize=(10,10))
+plt.scatter(graph_time, graph_force)
+plt.show()
+
 plt.figure(figsize=(10,10))
 plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], magnetic_potential[::4,::4,0], magnetic_potential[::4,::4,1])
 plt.show()

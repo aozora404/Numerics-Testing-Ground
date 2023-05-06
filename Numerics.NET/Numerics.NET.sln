@@ -5,7 +5,7 @@ VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NumericsEngine", "NumericsEngine\NumericsEngine.csproj", "{4BEF32CB-320D-490A-B0E5-1E69D8281D6A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EddyCurrent", "EddyCurrent\EddyCurrent.csproj", "{FE4CECDD-8B47-495C-9A12-8233D45B1C97}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EddyCurrent-console", "EddyCurrent-console\EddyCurrent-console.csproj", "{2198CC15-4D16-40CE-9BD5-7D53FC829957}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{4BEF32CB-320D-490A-B0E5-1E69D8281D6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4BEF32CB-320D-490A-B0E5-1E69D8281D6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4BEF32CB-320D-490A-B0E5-1E69D8281D6A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FE4CECDD-8B47-495C-9A12-8233D45B1C97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FE4CECDD-8B47-495C-9A12-8233D45B1C97}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FE4CECDD-8B47-495C-9A12-8233D45B1C97}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FE4CECDD-8B47-495C-9A12-8233D45B1C97}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2198CC15-4D16-40CE-9BD5-7D53FC829957}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2198CC15-4D16-40CE-9BD5-7D53FC829957}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2198CC15-4D16-40CE-9BD5-7D53FC829957}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2198CC15-4D16-40CE-9BD5-7D53FC829957}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
