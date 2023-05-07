@@ -18,19 +18,19 @@ time_step = 0.000008 # s
 time_end = 1 # s
 
 # Flying mass settings
-initial_velocity = 0 # mm s-1
-mass = 0.01 # kg
+initial_velocity = 2000 # mm s-1
+mass = 0.001 # kg
 object_radius = 10 # mm 
 material_conductivity = 3.5 * 10**1 # mm-2 kg-1 s3 A2
 material_magnetic_permeability = 1.256665 * 10**(-3) # mm kg s-2 A-2
 
 # Magnetic coil settings
 coil_radius = 200 # mm
-coil_magnetic_field_strength = -0.1 # kg s-2 A-1
-coil_distance = 208 # mm
+coil_magnetic_field_strength = -0.01 # kg s-2 A-1
+coil_distance = 210.1 # mm
 
 # Miscellaneous
-force_external_magnitude = 5000 # mm kg s-2
+force_external_magnitude = 4900 * mass # mm kg s-2
 
 
 # Pre-processing
@@ -49,7 +49,7 @@ coil_origin = np.array([coil_distance,0])
 alpha = 0.5 * coil_magnetic_field_strength
 
 
-cell_volume = cell_size ** 2
+cell_volume = cell_size ** 3
 cell_size_inv = 1/cell_size
 
 cell_count = int(grid_size/cell_size)
@@ -113,11 +113,10 @@ for y in range(1, cell_count):
         s = relative_position[y,x] + position - coil_origin
         s_mag = s.dot(s)
         if s_mag > coil_radius_squared:
-            magnetic_potential_embedded[y,x] = alpha * (coil_radius_squared/s_mag) * np.array([-s[1], s[0]])
+            magnetic_potential_embedded_previous[y,x] = alpha * (coil_radius_squared/s_mag) * np.array([-s[1], s[0]])
         else:
-            magnetic_potential_embedded[y,x] = alpha * np.array([-s[1], s[0]])
+            magnetic_potential_embedded_previous[y,x] = alpha * np.array([-s[1], s[0]])
 
-magnetic_potential_embedded_previous = magnetic_potential_embedded
 
 
 plt.figure(figsize=(10,10))
@@ -144,7 +143,7 @@ while t < time_end:
                 magnetic_potential_embedded[y,x] = alpha * np.array([-s[1], s[0]])
                 magnetic_potential_embedded_delta[y,x] = alpha * np.array([-velocity[1], velocity[0]])
                 magnetic_potential_embedded_lagrangian[y,x] = magnetic_potential_embedded[y,x] / s_mag
-            
+        
     # Calculate induced magnetic potential
     for y in range(1, cell_count):
         for x in range(1, cell_count):
