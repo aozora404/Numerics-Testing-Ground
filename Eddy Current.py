@@ -14,23 +14,23 @@ import numericslib as nlib
 # Simulation settings
 grid_size = 22 # mm
 cell_size = 0.088 # mm
-time_step = 0.000008 # s
+time_step = 0.00001 # s
 time_end = 1 # s
 
 # Flying mass settings
-initial_velocity = 2000 # mm s-1
-mass = 0.001 # kg
+initial_velocity = 0 # mm s-1
+mass = 0.000842 # kg
 object_radius = 10 # mm 
 material_conductivity = 3.5 * 10**1 # mm-2 kg-1 s3 A2
 material_magnetic_permeability = 1.256665 * 10**(-3) # mm kg s-2 A-2
 
 # Magnetic coil settings
 coil_radius = 200 # mm
-coil_magnetic_field_strength = -0.01 # kg s-2 A-1
-coil_distance = 210.1 # mm
+coil_magnetic_field_strength = 0.05 # kg s-2 A-1
+coil_distance = 100 # mm
 
 # Miscellaneous
-force_external_magnitude = 4900 * mass # mm kg s-2
+force_external_magnitude = 0 * mass # mm kg s-2
 
 
 # Pre-processing
@@ -113,9 +113,9 @@ for y in range(1, cell_count):
         s = relative_position[y,x] + position - coil_origin
         s_mag = s.dot(s)
         if s_mag > coil_radius_squared:
-            magnetic_potential_embedded_previous[y,x] = alpha * (coil_radius_squared/s_mag) * np.array([-s[1], s[0]])
+            magnetic_potential_embedded[y,x] = alpha * (coil_radius_squared/s_mag) * np.array([-s[1], s[0]])
         else:
-            magnetic_potential_embedded_previous[y,x] = alpha * np.array([-s[1], s[0]])
+            magnetic_potential_embedded[y,x] = alpha * np.array([-s[1], s[0]])
 
 
 
@@ -127,8 +127,24 @@ plt.show()
 # Solver
 t = 0
 dt = time_step
+dt_inverse = 1/dt
 
 while t < time_end:
+    
+    print(t)
+    print("Position = ", position)
+    print("Velocity = ", velocity)
+    print("Force = ", force)
+    print("")
+    
+    plt.figure(figsize=(10,10))
+    plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], current[::4,::4,0], current[::4,::4,1])
+    plt.show()
+    """
+    plt.figure(figsize=(10,10))
+    plt.pcolormesh(magnetic_field, cmap=plt.colormaps['seismic'], vmin=-0.001, vmax=0.001)
+    plt.show()
+    """
     
     # Calculate embedded magnetic potential
     for y in range(1, cell_count):
@@ -136,11 +152,17 @@ while t < time_end:
             s = relative_position[y,x] + position - coil_origin
             s_mag = s.dot(s)
             if s_mag > coil_radius_squared:
-                magnetic_potential_embedded[y,x] = alpha * (coil_radius_squared/s_mag) * np.array([-s[1], s[0]])
-                magnetic_potential_embedded_delta[y,x] = (1/dt)*(magnetic_potential_embedded[y,x] - magnetic_potential_embedded_previous[y,x])
-                magnetic_potential_embedded_lagrangian[y,x] = magnetic_potential_embedded[y,x] / s_mag
+                s_mag_inverse = 1/s_mag
+                aux = 2*(s[0] * velocity[0] + s[1] * velocity[1])*s_mag_inverse
+                magnetic_potential_embedded_previous = magnetic_potential_embedded
+                magnetic_potential_embedded[y,x] = alpha * (coil_radius_squared * s_mag_inverse) * np.array([-s[1], s[0]])
+                #magnetic_potential_embedded_delta[y,x] = (dt_inverse*magnetic_potential_embedded[y,x] - dt_inverse*magnetic_potential_embedded_previous[y,x])
+                magnetic_potential_embedded_delta[y,x] = alpha * (coil_radius_squared*s_mag_inverse) * np.array([-(velocity[1] - s[1] * aux), velocity[0] - s[0] * aux])
+                magnetic_potential_embedded_lagrangian[y,x] = magnetic_potential_embedded[y,x] * s_mag_inverse
             else:
-                magnetic_potential_embedded[y,x] = alpha * np.array([-s[1], s[0]])
+                magnetic_potential_embedded_previous = magnetic_potential_embedded
+                magnetic_potential_embedded[y,x] = alpha * np.array([-s[1], s[0]]) 
+                #magnetic_potential_embedded_delta[y,x] = (dt_inverse*magnetic_potential_embedded[y,x] - dt_inverse*magnetic_potential_embedded_previous[y,x])
                 magnetic_potential_embedded_delta[y,x] = alpha * np.array([-velocity[1], velocity[0]])
                 magnetic_potential_embedded_lagrangian[y,x] = magnetic_potential_embedded[y,x] / s_mag
         
@@ -157,7 +179,7 @@ while t < time_end:
     for y in range(1, cell_count):
         for x in range(1, cell_count):
             if conductivity[y,x] != 0:
-                current[y,x] = - conductivity[y,x] * (magnetic_potential_delta[y,x] + magnetic_potential_embedded_delta[y,x])
+                current[y,x] = -conductivity[y,x] * (magnetic_potential_delta[y,x] + magnetic_potential_embedded_delta[y,x])
                 magnetic_field[y,x] = cell_size_inv * nlib.curl_flux_2d(magnetic_potential + magnetic_potential_embedded , x, y)
     
     # Dynamics
@@ -175,12 +197,10 @@ while t < time_end:
     position_next = position + dt * velocity 
     
     # Time step
-    magnetic_potential_previous = magnetic_potential
     magnetic_potential = magnetic_potential_next
     magnetic_potential_current_x = magnetic_potential_current_x_next
     magnetic_potential_current_y = magnetic_potential_current_y_next
     magnetic_potential_delta = magnetic_potential_delta_next
-    magnetic_potential_embedded_previous = magnetic_potential_embedded
     position = position_next
     velocity = velocity_next
 
@@ -191,20 +211,7 @@ while t < time_end:
     graph_velocity = np.append(graph_velocity, [velocity[0]])
     graph_force = np.append(graph_force, [force[0]])
     
-    print(t)
-    print("Position = ", position)
-    print("Velocity = ", velocity)
-    print("Force = ", force)
-    print("")
     
-    plt.figure(figsize=(10,10))
-    plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], current[::4,::4,0], current[::4,::4,1])
-    plt.show()
-    """
-    plt.figure(figsize=(10,10))
-    plt.pcolormesh(magnetic_field, cmap=plt.colormaps['seismic'], vmin=-0.001, vmax=0.001)
-    plt.show()
-    """
 
 # Post-processing
 plt.figure(figsize=(10,10))
