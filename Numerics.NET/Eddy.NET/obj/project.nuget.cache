@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "XeMn7BwHVHAmjulXDNYPO0pait+L5YgtTFS1svFeQqQGrWIrTP9BYKdCRze78g6ZgwCwmTJoUTpRFd6Yvskbsg==",
+  "success": true,
+  "projectFilePath": "C:\\Aozora\\高専\\卒業研究\\Numerics-Testing-Ground\\Numerics.NET\\Eddy.NET\\Eddy.NET.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\aozor\\.nuget\\packages\\sharprompt\\2.4.5\\sharprompt.2.4.5.nupkg.sha512",
+    "C:\\Users\\aozor\\.nuget\\packages\\system.componentmodel.annotations\\5.0.0\\system.componentmodel.annotations.5.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -5,8 +5,8 @@ using NLib = NumericsEngine.NumericsLib;
 // Settings
 
 // Simulation Settings
+int resolution = 200;
 double gridSize = 20.0;                             // mm
-double cellSize = 0.1;                              // mm
 double timeStep = 0.00004;                           // s
 double timeEnd = 1.0;                               // s
 
@@ -25,7 +25,7 @@ double coilDistance = 208.0;
 Console.WriteLine("Current Settings");
 Console.WriteLine("----- Simulation Settings -----");
 Console.WriteLine("Grid Size = {0} mm", gridSize);
-Console.WriteLine("Cell Size = {0} mm", cellSize);
+Console.WriteLine("Resolution = {0} mm", resolution);
 Console.WriteLine("Time Step = {0} s", timeStep);
 Console.WriteLine("Time End = {0} s", timeEnd);
 Console.WriteLine("----- Object Settings -----");
@@ -58,9 +58,9 @@ Vector2D coilOrigin = new(coilDistance, 0);
 
 double alpha = 0.5 * coilMagneticFieldStrength;
 
+double cellSize = gridSize / resolution;
 double cellArea = cellSize * cellSize;
 double cellSizeInverse = 1 / cellSize;
-int cellCount = (int)(gridSize / cellSize);
 
 // Dummy Variable
 Vector2D s;
@@ -68,53 +68,33 @@ Vector2D s;
 // Initialize Structures
 Console.WriteLine("Building structures...");
 
-Vector2D[,] relativePosition = new Vector2D[cellCount + 2, cellCount + 2];
+Vector2D[,] relativePosition = new Vector2D[resolution + 2, resolution + 2];
 
-Vector2D[,] current = new Vector2D[cellCount + 2, cellCount + 2];
-double[,] conductivity = new double[cellCount + 2, cellCount + 2];
+Vector2D[,] current = new Vector2D[resolution + 2, resolution + 2];
+double[,] conductivity = new double[resolution + 2, resolution + 2];
 
-double[,] magneticField = new double[cellCount + 2, cellCount + 2];
+Vector2D[,] magneticPotential = new Vector2D[resolution + 2, resolution + 2];
+Vector2D[,] magneticPotentialPrevious = new Vector2D[resolution + 2, resolution + 2];
+Vector2D[,] magneticPotentialDelta = new Vector2D[resolution + 2, resolution + 2];
 
+Vector2D[,] magneticPotentialEmbedded = new Vector2D[resolution + 2, resolution + 2];
+Vector2D[,] magneticPotentialEmbeddedPrevious = new Vector2D[resolution + 2, resolution + 2];
+Vector2D[,] magneticPotentialEmbeddedDelta = new Vector2D[resolution + 2, resolution + 2];
 
-Vector2D[,] magneticPotential = new Vector2D[cellCount + 2, cellCount + 2];
-Vector2D[,] magneticPotentialNext = new Vector2D[cellCount + 2, cellCount + 2];
+Vector2D[,] magneticPotentialTotal = new Vector2D[resolution + 2, resolution + 2];
 
-Vector2D[,] magneticPotentialCurrentX = new Vector2D[cellCount + 2, cellCount + 2];
-Vector2D[,] magneticPotentialCurrentXNext = new Vector2D[cellCount + 2, cellCount + 2];
-
-Vector2D[,] magneticPotentialCurrentY = new Vector2D[cellCount + 2, cellCount + 2];
-Vector2D[,] magneticPotentialCurrentYNext = new Vector2D[cellCount + 2, cellCount + 2];
-
-Vector2D[,] magneticPotentialDelta = new Vector2D[cellCount + 2, cellCount + 2];
-Vector2D[,] magneticPotentialDeltaNext = new Vector2D[cellCount + 2, cellCount + 2];
-
-
-Vector2D[,] magneticPotentialEmbedded = new Vector2D[cellCount + 2, cellCount + 2];
-Vector2D[,] magneticPotentialEmbeddedPrevious = new Vector2D[cellCount + 2, cellCount + 2];
-
-Vector2D[,] magneticPotentialEmbeddedDelta = new Vector2D[cellCount + 2, cellCount + 2];
-Vector2D[,] magneticPotentialEmbeddedLagrangian = new Vector2D[cellCount + 2, cellCount + 2];
-
-Vector2D[,] magneticPotentialTotal = new Vector2D[cellCount + 2, cellCount + 2];
-
-for (int y = 0; y < cellCount + 2; y++)
+for (int y = 0; y < resolution + 2; y++)
 {
-    for (int x = 0; x < cellCount + 2; x++)
+    for (int x = 0; x < resolution + 2; x++)
     {
         relativePosition[y, x] = new Vector2D(0, 0);
         current[y, x] = new Vector2D(0, 0);
         magneticPotential[y, x] = new Vector2D(0, 0);
-        magneticPotentialNext[y, x] = new Vector2D(0, 0);
-        magneticPotentialCurrentX[y, x] = new Vector2D(0, 0);
-        magneticPotentialCurrentXNext[y, x] = new Vector2D(0, 0);
-        magneticPotentialCurrentY[y, x] = new Vector2D(0, 0);
-        magneticPotentialCurrentYNext[y, x] = new Vector2D(0, 0);
+        magneticPotentialPrevious[y, x] = new Vector2D(0, 0);
         magneticPotentialDelta[y, x] = new Vector2D(0, 0);
-        magneticPotentialDeltaNext[y, x] = new Vector2D(0, 0);
         magneticPotentialEmbedded[y, x] = new Vector2D(0, 0);
         magneticPotentialEmbeddedPrevious[y, x] = new Vector2D(0, 0);
         magneticPotentialEmbeddedDelta[y, x] = new Vector2D(0, 0);
-        magneticPotentialEmbeddedLagrangian[y, x] = new Vector2D(0, 0);
         magneticPotentialTotal[y, x] = new Vector2D(0, 0);
     }
 }
@@ -136,17 +116,17 @@ Console.WriteLine("Initializing field values...");
 
 velocity.SetValue(initialVelocity, 0);
 
-for (int y = 1; y <= cellCount; y++)
+for (int y = 1; y <= resolution; y++)
 {
-    for (int x = 1; x <= cellCount; x++)
+    for (int x = 1; x <= resolution; x++)
     {
         relativePosition[y, x].SetValue(-gridSize / 2 + cellSize * x, -gridSize / 2 + cellSize * y);
     }
 }
 
-for (int y = 1; y <= cellCount; y++)
+for (int y = 1; y <= resolution; y++)
 {
-    for (int x = 1; x <= cellCount; x++)
+    for (int x = 1; x <= resolution; x++)
     {
         if (relativePosition[y, x].MagnitudeSquared() < objectRadiusSquared)
         {
@@ -156,9 +136,9 @@ for (int y = 1; y <= cellCount; y++)
 }
 
 
-for (int y = 1; y <= cellCount; y++)
+for (int y = 1; y <= resolution; y++)
 {
-    for (int x = 1; x <= cellCount; x++)
+    for (int x = 1; x <= resolution; x++)
     {
         s = relativePosition[y, x] + position - coilOrigin;
         if (s.MagnitudeSquared() > coilRadiusSquared)
@@ -182,9 +162,9 @@ double dt = timeStep;
 while (t < timeEnd)
 {
     // Calculate embedded magnetic potential
-    for (int y = 1; y <= cellCount; y++)
+    for (int y = 1; y <= resolution; y++)
     {
-        for (int x = 1; x <= cellCount; x++)
+        for (int x = 1; x <= resolution; x++)
         {
             s = relativePosition[y, x] + position - coilOrigin;
             double sMagnitude = s.MagnitudeSquared();
@@ -192,21 +172,21 @@ while (t < timeEnd)
             {
                 magneticPotentialEmbedded[y, x] = alpha * (coilRadiusSquared / sMagnitude) * new Vector2D(-s.y, s.x);
                 magneticPotentialEmbeddedDelta[y, x] = (1 / dt) * (magneticPotentialEmbedded[y, x] - magneticPotentialEmbeddedPrevious[y, x]);
-                magneticPotentialEmbeddedLagrangian[y, x] = (1 / sMagnitude) * magneticPotentialEmbedded[y, x];
             }
             else
             {
                 magneticPotentialEmbedded[y, x] = alpha * new Vector2D(-s.y, s.x);
                 magneticPotentialEmbeddedDelta[y, x] = alpha * (new Vector2D(-velocity.y, velocity.x));
-                magneticPotentialEmbeddedLagrangian[y, x] = (1 / sMagnitude) * magneticPotentialEmbedded[y, x];
             }
         }
     }
 
     // Induced magnetic potential
-    for (int y = 1; y <= cellCount; y++)
+    // TODO: Insert poisson equation solver here
+    /*
+    for (int y = 1; y <= resolution; y++)
     {
-        for (int x = 1; x <= cellCount; x++)
+        for (int x = 1; x <= resolution; x++)
         {
             if (conductivity[y, x] != 0)
             {
@@ -217,45 +197,41 @@ while (t < timeEnd)
             }
         }
     }
+    */
 
-    // Total magnetic potential
-    magneticPotentialTotal = NLib.AddVectorFields(magneticPotential, magneticPotentialEmbedded);
 
-    // Current and magnetic field
-    for (int y = 1; y <= cellCount; y++)
+    // Current and Magnetic Potential
+    for (int y = 1; y <= resolution; y++)
     {
-        for (int x = 1; x <= cellCount; x++)
+        for (int x = 1; x <= resolution; x++)
         {
             if (conductivity[y, x] != 0)
             {
                 current[y, x] = -conductivity[y, x] * (magneticPotentialDelta[y, x] + magneticPotentialEmbeddedDelta[y, x]);
-                magneticField[y, x] = cellSizeInverse * NLib.CurlFlux2D(magneticPotentialTotal, x, y);
             }
+
+           //magneticPotentialTotal[y,x] = 
         }
     }
 
     // Dynamics
     force.SetValue(0, 0);
-    for (int y = 1; y <= cellCount; y++)
+    for (int y = 1; y <= resolution; y++)
     {
-        for (int x = 1; x <= cellCount; x++)
+        for (int x = 1; x <= resolution; x++)
         {
             if (conductivity[y, x] != 0)
             {
-                force += magneticField[y, x] * new Vector2D(current[y, x].y, -current[y, x].x);
+                force.x += 0;
             }
         }
     }
-
     force = cellArea * force;
+
     velocityNext = velocity + dt * massInverse * force;
     positionNext = position + dt * velocity;
 
     // Time step
-    magneticPotential = magneticPotentialNext;
-    magneticPotentialCurrentX = magneticPotentialCurrentXNext;
-    magneticPotentialCurrentY = magneticPotentialCurrentYNext;
-    magneticPotentialDelta = magneticPotentialDeltaNext;
     magneticPotentialEmbeddedPrevious = magneticPotentialEmbedded;
     position = positionNext;
     velocity = velocityNext;

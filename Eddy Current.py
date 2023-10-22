@@ -12,26 +12,28 @@ import numericslib as nlib
 
 # Settings
 # Simulation settings
-grid_size = 22 # mm
-cell_size = 0.088 # mm
-time_step = 0.00001 # s
-time_end = 1 # s
+grid_size = 22                                          # mm
+cell_size = 0.088                                       # mm
+time_step = 0.000001                                    # s
+time_end = 1                                            # s
 
 # Flying mass settings
-initial_velocity = 0 # mm s-1
-mass = 0.000842 # kg
-object_radius = 10 # mm 
-material_conductivity = 3.5 * 10**1 # mm-2 kg-1 s3 A2
-material_magnetic_permeability = 1.256665 * 10**(-3) # mm kg s-2 A-2
+initial_velocity = 0                                    # mm s-1
+mass = 0.000842                                         # kg
+object_radius = 10                                      # mm 
+material_conductivity = 3.5 * 10**1                     # mm-2 s3 kg-1 A2
+material_magnetic_permeability = 1.256665 * 10**(-3)    # mm s-2 kg A-2
 
 # Magnetic coil settings
-coil_radius = 200 # mm
-coil_magnetic_field_strength = 0.05 # kg s-2 A-1
-coil_distance = 100 # mm
+coil_radius = 200                                       # mm
+coil_magnetic_field_strength = 0.1                     # s-2 kg A-1
+coil_distance = 210                                       # mm
 
 # Miscellaneous
 force_external_magnitude = 0 * mass # mm kg s-2
 
+
+############################## SIMULATION ###############################
 
 # Pre-processing
 # Constants and Coefficients
@@ -74,9 +76,10 @@ magnetic_potential_current_y_next = np.zeros((cell_count + 2, cell_count + 2, 2)
 magnetic_potential_delta = np.zeros((cell_count + 2, cell_count + 2, 2))
 magnetic_potential_delta_next = np.zeros((cell_count + 2, cell_count + 2, 2))
 
-magnetic_potential_embedded = np.zeros((cell_count + 2, cell_count + 2, 2))
-magnetic_potential_embedded_previous = np.zeros((cell_count + 2, cell_count + 2, 2))
+magnetic_potential_lagrangian = np.zeros((cell_count + 2, cell_count + 2, 2))
+magnetic_potential_lagrangian_next = np.zeros((cell_count + 2, cell_count + 2, 2))
 
+magnetic_potential_embedded = np.zeros((cell_count + 2, cell_count + 2, 2))
 magnetic_potential_embedded_delta = np.zeros((cell_count + 2, cell_count + 2, 2))
 magnetic_potential_embedded_lagrangian = np.zeros((cell_count + 2, cell_count + 2, 2))
 
@@ -113,12 +116,22 @@ for y in range(1, cell_count):
         s = relative_position[y,x] + position - coil_origin
         s_mag = s.dot(s)
         if s_mag > coil_radius_squared:
+            s_mag_inverse = 1/s_mag
             magnetic_potential_embedded[y,x] = alpha * (coil_radius_squared/s_mag) * np.array([-s[1], s[0]])
+            magnetic_potential_embedded_lagrangian[y,x] = magnetic_potential_embedded[y,x] * s_mag_inverse
         else:
             magnetic_potential_embedded[y,x] = alpha * np.array([-s[1], s[0]])
+            if s_mag != 0:
+                magnetic_potential_embedded_lagrangian[y,x] = magnetic_potential_embedded[y,x] / s_mag
+            else:
+                magnetic_potential_embedded_lagrangian[y,x] = np.array([0,0])
+            
 
-
-
+for y in range(1, cell_count):
+    for x in range(1, cell_count):
+        magnetic_potential[y,x] = -magnetic_potential_embedded[y,x]
+        magnetic_potential_lagrangian[y,x] = -magnetic_potential_embedded_lagrangian[y,x]
+        
 plt.figure(figsize=(10,10))
 plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], magnetic_potential[::4,::4,0]+magnetic_potential_embedded[::4,::4,0], magnetic_potential[::4,::4,1]+magnetic_potential_embedded[::4,::4,1])
 plt.show()
@@ -140,11 +153,11 @@ while t < time_end:
     plt.figure(figsize=(10,10))
     plt.quiver(relative_position[::4,::4,0], relative_position[::4,::4,1], current[::4,::4,0], current[::4,::4,1])
     plt.show()
-    """
+    
     plt.figure(figsize=(10,10))
     plt.pcolormesh(magnetic_field, cmap=plt.colormaps['seismic'], vmin=-0.001, vmax=0.001)
     plt.show()
-    """
+    
     
     # Calculate embedded magnetic potential
     for y in range(1, cell_count):
@@ -156,21 +169,23 @@ while t < time_end:
                 aux = 2*(s[0] * velocity[0] + s[1] * velocity[1])*s_mag_inverse
                 magnetic_potential_embedded_previous = magnetic_potential_embedded
                 magnetic_potential_embedded[y,x] = alpha * (coil_radius_squared * s_mag_inverse) * np.array([-s[1], s[0]])
-                #magnetic_potential_embedded_delta[y,x] = (dt_inverse*magnetic_potential_embedded[y,x] - dt_inverse*magnetic_potential_embedded_previous[y,x])
                 magnetic_potential_embedded_delta[y,x] = alpha * (coil_radius_squared*s_mag_inverse) * np.array([-(velocity[1] - s[1] * aux), velocity[0] - s[0] * aux])
                 magnetic_potential_embedded_lagrangian[y,x] = magnetic_potential_embedded[y,x] * s_mag_inverse
             else:
                 magnetic_potential_embedded_previous = magnetic_potential_embedded
                 magnetic_potential_embedded[y,x] = alpha * np.array([-s[1], s[0]]) 
-                #magnetic_potential_embedded_delta[y,x] = (dt_inverse*magnetic_potential_embedded[y,x] - dt_inverse*magnetic_potential_embedded_previous[y,x])
                 magnetic_potential_embedded_delta[y,x] = alpha * np.array([-velocity[1], velocity[0]])
-                magnetic_potential_embedded_lagrangian[y,x] = magnetic_potential_embedded[y,x] / s_mag
+                if s_mag != 0:
+                    magnetic_potential_embedded_lagrangian[y,x] = magnetic_potential_embedded[y,x] / s_mag
+                else:
+                    magnetic_potential_embedded_lagrangian[y,x] = np.array([0,0])
         
     # Calculate induced magnetic potential
     for y in range(1, cell_count):
         for x in range(1, cell_count):
             if conductivity[y,x] != 0:
-                magnetic_potential_delta_next[y,x] = (permeability_inverse/conductivity[y,x]) * (cell_size_inv * np.array([nlib.divergence_flux_2d(magnetic_potential_current_x, x, y), nlib.divergence_flux_2d(magnetic_potential_current_y, x, y)]) + magnetic_potential_embedded_lagrangian[y,x]) - magnetic_potential_embedded_delta[y,x] 
+                magnetic_potential_delta_next[y,x] = (permeability_inverse/conductivity[y,x]) * (magnetic_potential_lagrangian[y,x] + magnetic_potential_embedded_lagrangian[y,x]) - magnetic_potential_embedded_delta[y,x] 
+                magnetic_potential_lagrangian_next[y,x] = cell_size_inv * np.array([nlib.divergence_flux_2d(magnetic_potential_current_x, x, y), nlib.divergence_flux_2d(magnetic_potential_current_y, x, y)])
                 magnetic_potential_current_x_next[y,x] = cell_size_inv * nlib.gradient_flux_2d(magnetic_potential[:,:,0], x, y)
                 magnetic_potential_current_y_next[y,x] = cell_size_inv * nlib.gradient_flux_2d(magnetic_potential[:,:,1], x, y)
                 magnetic_potential_next[y,x] = magnetic_potential[y,x] + dt * magnetic_potential_delta[y,x]
@@ -201,6 +216,7 @@ while t < time_end:
     magnetic_potential_current_x = magnetic_potential_current_x_next
     magnetic_potential_current_y = magnetic_potential_current_y_next
     magnetic_potential_delta = magnetic_potential_delta_next
+    magnetic_potential_lagrangian = magnetic_potential_lagrangian_next
     position = position_next
     velocity = velocity_next
 

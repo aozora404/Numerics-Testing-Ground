@@ -1,0 +1,60 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v6.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v6.0": {
+      "Eddy.NET/1.0.0": {
+        "dependencies": {
+          "Sharprompt": "2.4.5"
+        },
+        "runtime": {
+          "Eddy.NET.dll": {}
+        }
+      },
+      "Sharprompt/2.4.5": {
+        "dependencies": {
+          "System.ComponentModel.Annotations": "5.0.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Sharprompt.dll": {
+            "assemblyVersion": "2.4.5.0",
+            "fileVersion": "2.4.5.0"
+          }
+        },
+        "resources": {
+          "lib/netstandard2.0/de-DE/Sharprompt.resources.dll": {
+            "locale": "de-DE"
+          },
+          "lib/netstandard2.0/ja/Sharprompt.resources.dll": {
+            "locale": "ja"
+          }
+        }
+      },
+      "System.ComponentModel.Annotations/5.0.0": {}
+    }
+  },
+  "libraries": {
+    "Eddy.NET/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Sharprompt/2.4.5": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hRYlerWsQGbm+okcxGrHzlm0n7wwVR2si1faSqt4IaO8iZcOKwW/MrBZgLiGRd2TVzFYGv22OuBoR2AatSlJbQ==",
+      "path": "sharprompt/2.4.5",
+      "hashPath": "sharprompt.2.4.5.nupkg.sha512"
+    },
+    "System.ComponentModel.Annotations/5.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-dMkqfy2el8A8/I76n2Hi1oBFEbG1SfxD2l5nhwXV3XjlnOmwxJlQbYpJH4W51odnU9sARCSAgv7S3CyAFMkpYg==",
+      "path": "system.componentmodel.annotations/5.0.0",
+      "hashPath": "system.componentmodel.annotations.5.0.0.nupkg.sha512"
+    }
+  }
+}

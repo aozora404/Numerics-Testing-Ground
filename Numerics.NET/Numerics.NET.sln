@@ -5,7 +5,17 @@ VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NumericsEngine", "NumericsEngine\NumericsEngine.csproj", "{4BEF32CB-320D-490A-B0E5-1E69D8281D6A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EddyCurrent-console", "EddyCurrent-console\EddyCurrent-console.csproj", "{2198CC15-4D16-40CE-9BD5-7D53FC829957}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EddyCurrent-console", "EddyCurrent-console\EddyCurrent-console.csproj", "{2198CC15-4D16-40CE-9BD5-7D53FC829957}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "poisson_solver_test", "poisson_solver_test\poisson_solver_test.csproj", "{00E3A7FA-C82A-4B30-883B-A3CFB7C21415}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "parallel_test", "parallel_test\parallel_test.csproj", "{A25AF587-AF73-4957-914E-0AA0F5A71D83}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hilbert_curve_test", "hilbert_curve_test\hilbert_curve_test.csproj", "{0026C1B5-62B8-430A-97C3-0A4DCE4E6DE2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Heat.NET", "Heat.NET\Heat.NET.csproj", "{2904D700-BE38-4520-A051-370FE92134F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eddy.NET", "Eddy.NET\Eddy.NET.csproj", "{5A9E0C9F-490B-4063-8F3B-4C12C1AD2411}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +31,26 @@ Global
 		{2198CC15-4D16-40CE-9BD5-7D53FC829957}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2198CC15-4D16-40CE-9BD5-7D53FC829957}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2198CC15-4D16-40CE-9BD5-7D53FC829957}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00E3A7FA-C82A-4B30-883B-A3CFB7C21415}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00E3A7FA-C82A-4B30-883B-A3CFB7C21415}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00E3A7FA-C82A-4B30-883B-A3CFB7C21415}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00E3A7FA-C82A-4B30-883B-A3CFB7C21415}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A25AF587-AF73-4957-914E-0AA0F5A71D83}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A25AF587-AF73-4957-914E-0AA0F5A71D83}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A25AF587-AF73-4957-914E-0AA0F5A71D83}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A25AF587-AF73-4957-914E-0AA0F5A71D83}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0026C1B5-62B8-430A-97C3-0A4DCE4E6DE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0026C1B5-62B8-430A-97C3-0A4DCE4E6DE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0026C1B5-62B8-430A-97C3-0A4DCE4E6DE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0026C1B5-62B8-430A-97C3-0A4DCE4E6DE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2904D700-BE38-4520-A051-370FE92134F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2904D700-BE38-4520-A051-370FE92134F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2904D700-BE38-4520-A051-370FE92134F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2904D700-BE38-4520-A051-370FE92134F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A9E0C9F-490B-4063-8F3B-4C12C1AD2411}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9E0C9F-490B-4063-8F3B-4C12C1AD2411}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9E0C9F-490B-4063-8F3B-4C12C1AD2411}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9E0C9F-490B-4063-8F3B-4C12C1AD2411}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

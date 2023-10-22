@@ -1,0 +1,15 @@
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\bin\Debug\net6.0\poisson_solver_test.exe
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\bin\Debug\net6.0\poisson_solver_test.deps.json
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\bin\Debug\net6.0\poisson_solver_test.runtimeconfig.json
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\bin\Debug\net6.0\poisson_solver_test.dll
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\bin\Debug\net6.0\poisson_solver_test.pdb
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\poisson_solver_test.csproj.AssemblyReference.cache
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\poisson_solver_test.GeneratedMSBuildEditorConfig.editorconfig
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\poisson_solver_test.AssemblyInfoInputs.cache
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\poisson_solver_test.AssemblyInfo.cs
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\poisson_solver_test.csproj.CoreCompileInputs.cache
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\poisson_solver_test.dll
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\refint\poisson_solver_test.dll
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\poisson_solver_test.pdb
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\poisson_solver_test.genruntimeconfig.cache
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\poisson_solver_test\obj\Debug\net6.0\ref\poisson_solver_test.dll

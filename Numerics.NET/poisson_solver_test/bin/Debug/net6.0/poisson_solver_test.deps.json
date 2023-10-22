@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v6.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v6.0": {
+      "poisson_solver_test/1.0.0": {
+        "runtime": {
+          "poisson_solver_test.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "poisson_solver_test/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

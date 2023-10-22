@@ -1,0 +1,14 @@
+﻿<Window x:Class="Heat.NET.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Heat.NET"
+        mc:Ignorable="d"
+        Title="Heat.NET" Height="500" Width="440">
+    <Grid>
+        <Image Name="HeatmapImage" HorizontalAlignment="Left" Height="400" VerticalAlignment="Top" Width="400" Margin="20,20,0,0"/>
+        <Button Name="PlayButton" Content="Play" Click="PlayButton_Click" Width="100" Height="30" Margin="10,420,0,0" HorizontalAlignment="Left"/>
+        <Button Name="ReplayButton" Content="Replay" Click="ReplayButton_Click" Width="100" Height="30" Margin="120,420,0,0" HorizontalAlignment="Left"/>
+    </Grid>
+</Window>
