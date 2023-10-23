@@ -230,14 +230,9 @@ namespace Eddy.NET
 
         private void MultigridSolve(int currentLevel)
         {
-            bool isCon = false;
-            
             if (currentLevel == maxLevels - 1)
             {
-                while (!isCon)
-                {
-                    isCon = Relaxation(currentLevel);
-                }
+                RelaxationToConvergence(currentLevel);
             }
             else
             {
@@ -262,8 +257,60 @@ namespace Eddy.NET
         private bool Relaxation(int currentLevel)
         {
             int size = JGrids[currentLevel].GetLength(0);
+            Parallel.For(1, size + 1, i =>
+            {
+                for (int j = 1; j < size + 1; j++)
+                {
+                    if (isMaterial[i, j]) // TODO: Redo
+                    {
+                        JGrids[currentLevel][i, j] = (1 - omegaJ) * JGrids[currentLevel][i, j]
+                                     + omegaJ / 4 * ((Dx * Dx / Dt) * (APrevious[i, j] - A[i, j]) + JGrids[currentLevel][i + 1, j] + JGrids[currentLevel][i - 1, j] + JGrids[currentLevel][i, j + 1] + JGrids[currentLevel][i, j - 1]);
+                    }
+                    else
+                    {
+                        JGrids[currentLevel][i, j] = new Vector(0, 0, 0);
+                    }
+                }
+            });
             // ... Implement a few iterations of the Gauss-Seidel relaxation here for the specified grid level...
         }
+
+        private void RelaxationToConvergence(int currentLevel)
+        {
+            int size = JGrids[currentLevel].GetLength(0);
+            bool isNotConverged = true;
+            int iterCount = 0;
+            while(isNotConverged || iterCount < 5000)
+            {
+                isNotConverged = false;
+                Parallel.For(1, size + 1, i =>
+                {
+                    for (int j = 1; j < size + 1; j++)
+                    {
+                        Vector oldValue = JGrids[currentLevel][i, j];
+
+                        if (isMaterial[i, j]) // TODO: Redo
+                        {
+                            JGrids[currentLevel][i, j] = (1 - omegaJ) * JGrids[currentLevel][i, j]
+                                        + omegaJ / 4 * ((Dx * Dx / Dt) * (APrevious[i, j] - A[i, j]) + JGrids[currentLevel][i + 1, j] + JGrids[currentLevel][i - 1, j] + JGrids[currentLevel][i, j + 1] + JGrids[currentLevel][i, j - 1]);
+                        }
+                        else
+                        {
+                            JGrids[currentLevel][i, j] = new Vector(0, 0, 0);
+                        }
+
+                        delta = (JGrids[currentLevel][i, j] - oldValue).Magnitude();
+
+                        if (delta > _settings.Tolerance)
+                        {
+                            isNotConverged = true;
+                        }
+                    }
+                });
+                iterCount++;
+            }
+        }
+
         private Vector[,] ComputeResidual(int currentLevel)
         {
             // Compute the difference between the current solution and the desired one
