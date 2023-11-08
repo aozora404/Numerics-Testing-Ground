@@ -20,6 +20,7 @@ namespace Eddy.NET
         private Vector[,] E0;
 
         private Vector[,] currentDensity;
+        private Vector[,] currentDensityPrevious;
         private double[,] chargeDensity;
         private double[,] chargeDensityPrevious;
 
@@ -28,7 +29,7 @@ namespace Eddy.NET
 
         private readonly SimulationSettings _settings;
 
-        public DirectFieldSolverMultigrid(SimulationSettings settings)
+        public DirectFieldSolverMk2(SimulationSettings settings)
         {
             _settings = settings;
 
@@ -42,6 +43,7 @@ namespace Eddy.NET
             E0 = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
             
             currentDensity = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
+            currentDensityPrevious = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
             chargeDensity = new double[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
             chargeDensityPrevious = new double[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
 
@@ -171,8 +173,7 @@ namespace Eddy.NET
             {
                 for (int j = 0; j < _settings.ResolutionSpace + 2; j++)
                 {
-                    E0[i,j] = velocity.Cross(B0[i,j])
-
+                    E0[i, j] = velocity.Cross(B0[i, j]);
                 }
             });
         }
@@ -191,7 +192,7 @@ namespace Eddy.NET
                     B[i, j] = (1 - _settings.Omega) * B[i, j]
                                      + _settings.Omega / 4 * ((B[i + 1, j] + B[i - 1, j] + B[i, j + 1] + B[i, j - 1]
                                                              + B0[i + 1, j] + B0[i - 1, j] + B0[i, j + 1] + B0[i, j - 1] - 4 * B0[i, j])
-                                                             + Dx/2 * _settings.MaterialMagneticPermeability * new Vector(0,0,(J[i+1,j].Y - J[i-1,j].Y) - (J[i,j+1].X-J[i,j-1].X)));
+                                                             + Dx/2 * _settings.MaterialMagneticPermeability * new Vector(0,0,(currentDensity[i+1,j].Y - currentDensity[i-1,j].Y) - (currentDensity[i,j+1].X-currentDensity[i, j - 1].X)));
                     
                     delta = (B[i, j] - oldValue).Magnitude();
 
@@ -219,7 +220,7 @@ namespace Eddy.NET
                     E[i, j] = (1 - _settings.Omega) * E[i, j]
                                      + _settings.Omega / 4 * ((E[i + 1, j] + E[i - 1, j] + E[i, j + 1] + E[i, j - 1]
                                                              + E0[i + 1, j] + E0[i - 1, j] + E0[i, j + 1] + E0[i, j - 1] - 4 * E0[i, j])
-                                                             - Dx/2 * _settings.MaterialElectricPermittivity * new Vector(0,0,(J[i+1,j].Y - J[i-1,j].Y) - (J[i,j+1].X-J[i,j-1].X)));
+                                                             - Dx/2 * _settings.MaterialElectricPermittivity * new Vector(0,0,0));
                     
                     delta = (E[i, j] - oldValue).Magnitude();
 
@@ -233,154 +234,29 @@ namespace Eddy.NET
             return isConverged;
         }
 
-        private void CalculateJ()
+        private void CalculateCharge()
         {
-            MultigridSolve(0);
+            CalculateCurrentDensity(); 
+            CalculateChargeDensity();
         }
 
-        private void MultigridSolve(int currentLevel)
+        private void CalculateCurrentDensity()
         {
-            if (currentLevel == maxLevels - 1)
+            Parallel.For(1, _settings.ResolutionSpace + 1, i =>
             {
-                RelaxationToConvergence(currentLevel);
-            }
-            else
-            {
-                for (int i = 0; i < numPreRelaxations; i++)
+                for (int j = 1; j < _settings.ResolutionSpace + 1; j++)
                 {
-                    Relaxation(currentLevel);
-                }
-
-                Vector[,] residual = ComputeResidual(currentLevel);
-                Vector[,] coarseResidual = Restrict(currentLevel);
-                MultigridSolve(currentLevel + 1);
-                Vector[,] fineCorrection = Prolongate(currentLevel + 1);
-                ApplyCorrection(fineCorrection, currentLevel);
-
-                for (int i = 0; i < numPostRelaxations; i++)
-                {
-                    Relaxation(currentLevel);
-                }
-            }
-        }
-
-        private bool Relaxation(int currentLevel)
-        {
-            int size = JGrids[currentLevel].GetLength(0);
-            Parallel.For(1, size + 1, i =>
-            {
-                for (int j = 1; j < size + 1; j++)
-                {
-                    if (isMaterial[i, j]) // TODO: Redo
-                    {
-                        JGrids[currentLevel][i, j] = (1 - omegaJ) * JGrids[currentLevel][i, j]
-                                     + omegaJ / 4 * ((Dx * Dx / Dt) * (APrevious[i, j] - A[i, j]) + JGrids[currentLevel][i + 1, j] + JGrids[currentLevel][i - 1, j] + JGrids[currentLevel][i, j + 1] + JGrids[currentLevel][i, j - 1]);
-                    }
-                    else
-                    {
-                        JGrids[currentLevel][i, j] = new Vector(0, 0, 0);
-                    }
+                    
                 }
             });
         }
 
-        private void RelaxationToConvergence(int currentLevel)
+        private void CalculateChargeDensity()
         {
-            int size = JGrids[currentLevel].GetLength(0);
-            bool isNotConverged = true;
-            int iterCount = 0;
-            while(isNotConverged || iterCount < 5000)
-            {
-                isNotConverged = false;
-                Parallel.For(1, size + 1, i =>
-                {
-                    for (int j = 1; j < size + 1; j++)
-                    {
-                        Vector oldValue = JGrids[currentLevel][i, j];
 
-                        if (isMaterial[i, j]) // TODO: Redo
-                        {
-                            JGrids[currentLevel][i, j] = (1 - omegaJ) * JGrids[currentLevel][i, j]
-                                        + omegaJ / 4 * ((Dx * Dx / Dt) * (APrevious[i, j] - A[i, j]) + JGrids[currentLevel][i + 1, j] + JGrids[currentLevel][i - 1, j] + JGrids[currentLevel][i, j + 1] + JGrids[currentLevel][i, j - 1]);
-                        }
-                        else
-                        {
-                            JGrids[currentLevel][i, j] = new Vector(0, 0, 0);
-                        }
-
-                        delta = (JGrids[currentLevel][i, j] - oldValue).Magnitude();
-
-                        if (delta > _settings.Tolerance)
-                        {
-                            isNotConverged = true;
-                        }
-                    }
-                });
-                iterCount++;
-            }
         }
 
-        private Vector[,] ComputeResidual(int currentLevel)
-        {
-            // Compute the difference between the current solution and the desired one
-            // This will involve looping over the grid and calculating the residual for each node
-            int size = JGrids[currentLevel].GetLength(0);
-            Vector[,] res = new Vector[size,size];
-            Parallel.For(1, size + 1, i =>
-            {
-                for (int j = 1; j < size + 1; j++)
-                {
-                    res[i,j] = new Vector(0,0,0);
-                }
-            });
-        }
-
-        private Vector[,] Restrict(int currentLevel)
-        {
-            int coarseSize = JGrids[currentLevel + 1].GetLength(0) / 2;
-            Vector[,] coarseResidual = new Vector[coarseSize, coarseSize];
-
-            for (int i = 0; i < coarseSize; i++)
-            {
-                for (int j = 0; j < coarseSize; j++)
-                {
-                    int iFine = 2 * i;
-                    int jFine = 2 * j;
-                    coarseResidual[i, j] = 0.25 * (JGrids[currentLevel][iFine, jFine] + JGrids[currentLevel][iFine + 1, jFine] + JGrids[currentLevel][iFine, jFine + 1] + JGrids[currentLevel][iFine + 1, jFine + 1]);
-                }
-            }
-
-            return coarseResidual;
-        }
-
-        private Vector[,] Prolongate(int currentLevel)
-        {
-            int fineSize = JGrids[currentLevel - 1].GetLength(0);
-            Vector[,] fineSolution = new Vector[fineSize, fineSize];
-
-            for (int i = 0; i < fineSize; i++)
-            {
-                for (int j = 0; j < fineSize; j++)
-                {
-                    int iCoarse = i / 2;
-                    int jCoarse = j / 2;
-                    fineSolution[i, j] = 0.25 * (JGrids[currentLevel][iCoarse, jCoarse] + JGrids[currentLevel][Math.Min(iCoarse + 1, JGrids[currentLevel].GetLength(0) - 1), jCoarse] + JGrids[currentLevel][iCoarse, Math.Min(jCoarse + 1, JGrids[currentLevel].GetLength(1) - 1)] + JGrids[currentLevel][Math.Min(iCoarse + 1, JGrids[currentLevel].GetLength(0) - 1), Math.Min(jCoarse + 1, JGrids[currentLevel].GetLength(1) - 1)]);
-                }
-            }
-
-            return fineSolution;
-        }
-
-        private void ApplyCorrection(Vector[,] fineCorrection, int currentLevel)
-        {
-            for (int i = 0; i < JGrids[currentLevel].GetLength(0); i++)
-            {
-                for (int j = 0; j < JGrids[currentLevel].GetLength(0); j++)
-                {
-                    JGrids[currentLevel][i, j] += fineCorrection[i, j];
-                }
-            }
-        }
+        
 
         private void CalculateForce()
         {
@@ -391,7 +267,7 @@ namespace Eddy.NET
                 {
                     if (isMaterial[i, j])
                     {
-                        force += Dx * Dx * Dx * J[i, j].Cross(B[i, j]);
+                        force += Dx * Dx * Dx * currentDensity[i, j].Cross(B[i, j]);
                     }
                 }
             }
@@ -407,10 +283,8 @@ namespace Eddy.NET
 
         private void TimeStep()
         {
-            Array.Copy(B, BPrevious, BPrevious.Length);
-            Array.Copy(B0, B0Previous, B0Previous.Length);
-            Array.Copy(J, JPrevious, JPrevious.Length);
-            Array.Copy(A, APrevious, APrevious.Length);
+            Array.Copy(currentDensity, currentDensityPrevious, currentDensityPrevious.Length);
+            Array.Copy(chargeDensity, chargeDensityPrevious, chargeDensityPrevious.Length);
         }
     }
 
