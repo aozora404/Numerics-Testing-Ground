@@ -113,29 +113,14 @@ namespace Eddy.NET
         {
             EmbedB0();
             EmbedE0();
-            bool isConverged = false;
-            int iterationCount = 0;
+            CalculateB();
+            CalculateE();
+        }
 
-            while (!isConverged && iterationCount < _settings.MaxIterations)
-            {
-                isConverged = UpdateB();
-
-                iterationCount++;
-            }
-
-            Console.Write($"B Converged in {iterationCount} iterations. ");
-
-            isConverged = false;
-            iterationCount = 0;
-
-            while (!isConverged && iterationCount < _settings.MaxIterations)
-            {
-                isConverged = UpdateE();
-
-                iterationCount++;
-            }
-
-            Console.Write($"E Converged in {iterationCount} iterations. ");
+        private void CalculateCharge()
+        {
+            CalculateCurrentDensity(); 
+            CalculateChargeDensity();
         }
 
         private void EmbedB0()
@@ -176,6 +161,34 @@ namespace Eddy.NET
                     E0[i, j] = velocity.Cross(B0[i, j]);
                 }
             });
+        }
+
+        private void CalculateB()
+        {
+            bool isConverged = false;
+            int iterationCount = 0;
+
+            while (!isConverged && iterationCount < _settings.MaxIterations)
+            {
+                isConverged = UpdateB();
+                iterationCount++;
+            }
+
+            Console.Write($"B Converged in {iterationCount} iterations. ");
+        }
+
+        private void CalculateE()
+        {
+            bool isConverged = false;
+            int iterationCount = 0;
+
+            while (!isConverged && iterationCount < _settings.MaxIterations)
+            {
+                isConverged = UpdateE();
+                iterationCount++;
+            }
+
+            Console.Write($"E Converged in {iterationCount} iterations. ");
         }
 
         private bool UpdateB()
@@ -220,7 +233,8 @@ namespace Eddy.NET
                     E[i, j] = (1 - _settings.Omega) * E[i, j]
                                      + _settings.Omega / 4 * ((E[i + 1, j] + E[i - 1, j] + E[i, j + 1] + E[i, j - 1]
                                                              + E0[i + 1, j] + E0[i - 1, j] + E0[i, j + 1] + E0[i, j - 1] - 4 * E0[i, j])
-                                                             - Dx/2 * _settings.MaterialElectricPermittivity * new Vector(0,0,0));
+                                                             - Dx/2 * _settings.MaterialElectricPermittivity * new Vector(chargeDensity[i+1,j] - chargeDensity[i-1,j], chargeDensity[i,j+1] - chargeDensity[i,j-1], 0)
+                                                             - (Dx * Dx / Dt) * _settings.MaterialMagneticPermeability * (currentDensity[i,j] - currentDensityPrevious[i,j]));
                     
                     delta = (E[i, j] - oldValue).Magnitude();
 
@@ -234,29 +248,27 @@ namespace Eddy.NET
             return isConverged;
         }
 
-        private void CalculateCharge()
-        {
-            CalculateCurrentDensity(); 
-            CalculateChargeDensity();
-        }
-
         private void CalculateCurrentDensity()
         {
             Parallel.For(1, _settings.ResolutionSpace + 1, i =>
             {
                 for (int j = 1; j < _settings.ResolutionSpace + 1; j++)
                 {
-                    
+                    currentDensity[i,j] = _settings.MaterialConductivity * (E[i,j] + E0[i,j])
                 }
             });
         }
 
         private void CalculateChargeDensity()
         {
-
+            Parallel.For(1, _settings.ResolutionSpace + 1, i =>
+            {
+                for (int j = 1; j < _settings.ResolutionSpace + 1; j++)
+                {
+                    chargeDensity[i,j] = chargeDensityPrevious[i,j] + (Dt/(2 * Dx)) * (currentDensity[i+1, j].X - currentDensity[i-1, j].X + currentDensity[i, j+1].Y - currentDensity[i, j-1].Y)
+                }
+            });
         }
-
-        
 
         private void CalculateForce()
         {
