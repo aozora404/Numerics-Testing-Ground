@@ -26,6 +26,7 @@ namespace Eddy.NET
         public string Material = "Aluminium";
         public double MaterialConductivity = 3.5e1;
         public double MaterialMagneticPermeability = 1.256665e-3;
+        public double MaterialElectricPermittivity = 1;
         public double MaterialDensity = 2.7e-6;
 
         public double CoilRadius = 10.0;
