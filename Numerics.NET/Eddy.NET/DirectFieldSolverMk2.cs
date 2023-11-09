@@ -274,7 +274,15 @@ namespace Eddy.NET
             {
                 for (int j = 1; j < _settings.ResolutionSpace + 1; j++)
                 {
-                    currentDensity[i, j] = _settings.MaterialConductivity * (E[i, j] + E0[i, j]);
+                    if (isMaterial[i,j])
+                    {
+                        currentDensity[i, j] = _settings.MaterialConductivity * (E[i, j] + E0[i, j]);
+                    }
+                    else
+                    {
+                        currentDensity[i, j] = new Vector(0, 0, 0);
+                    }
+                    
                 }
             });
         }
@@ -285,7 +293,15 @@ namespace Eddy.NET
             {
                 for (int j = 1; j < _settings.ResolutionSpace + 1; j++)
                 {
-                    chargeDensity[i, j] = chargeDensityPrevious[i, j] + (Dt / (2 * Dx)) * (currentDensity[i + 1, j].X - currentDensity[i - 1, j].X + currentDensity[i, j + 1].Y - currentDensity[i, j - 1].Y);
+                    if (isMaterial[i, j])
+                    {
+                        chargeDensity[i, j] = chargeDensityPrevious[i, j] + (Dt / (2 * Dx)) * (currentDensity[i + 1, j].X - currentDensity[i - 1, j].X + currentDensity[i, j + 1].Y - currentDensity[i, j - 1].Y);
+                    }
+                    else
+                    {
+                        chargeDensity[i, j] = 0;
+                    }
+                    
                 }
             });
         }
