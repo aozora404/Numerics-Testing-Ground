@@ -59,6 +59,7 @@ namespace Eddy.NET
                     E0[i, j] = new Vector(0, 0, 0);
                     
                     currentDensity[i, j] = new Vector(0, 0, 0);
+                    currentDensityPrevious[i, j] = new Vector(0, 0, 0);
                     chargeDensity[i, j] = 0;
                     chargeDensityPrevious[i, j] = 0;
                     
@@ -93,7 +94,7 @@ namespace Eddy.NET
                 DynamicsStep();
                 TimeStep();
                 currentTime += Dt;
-                Console.WriteLine($"Position: {position:f2} Velocity: {velocity:f2} Time: {currentTime:f2} ");
+                Console.WriteLine($"Position: {position:f2} Velocity: {velocity:f2} Time: {currentTime:f2} Force: {force:f2}");
             }
         }
 
@@ -213,8 +214,7 @@ namespace Eddy.NET
                     {
                         B[i, j] = (1 - _settings.Omega) * B[i, j]
                                      + _settings.Omega / 4 * ((B[i + 1, j] + B[i - 1, j] + B[i, j + 1] + B[i, j - 1]
-                                                             + B0[i + 1, j] + B0[i - 1, j] + B0[i, j + 1] + B0[i, j - 1] - 4 * B0[i, j])
-                                                             + Dx/2 * _settings.VacuumMagneticPermeability * new Vector(0,0,(currentDensity[i+1,j].Y - currentDensity[i-1,j].Y) - (currentDensity[i,j+1].X-currentDensity[i, j - 1].X)));
+                                                             + B0[i + 1, j] + B0[i - 1, j] + B0[i, j + 1] + B0[i, j - 1] - 4 * B0[i, j]));
                     }
                     
                     delta = (B[i, j] - oldValue).Magnitude();
@@ -245,16 +245,14 @@ namespace Eddy.NET
                         E[i, j] = (1 - _settings.Omega) * E[i, j]
                                      + _settings.Omega / 4 * ((E[i + 1, j] + E[i - 1, j] + E[i, j + 1] + E[i, j - 1]
                                                              + E0[i + 1, j] + E0[i - 1, j] + E0[i, j + 1] + E0[i, j - 1] - 4 * E0[i, j])
-                                                             - Dx/2 * _settings.MaterialElectricPermittivity * new Vector(chargeDensity[i+1,j] - chargeDensity[i-1,j], chargeDensity[i,j+1] - chargeDensity[i,j-1], 0)
-                                                             - (Dx * Dx / Dt) * _settings.MaterialMagneticPermeability * (currentDensity[i,j] - currentDensityPrevious[i,j]));
+                                                             - Dx / (2 * _settings.MaterialElectricPermittivity) * new Vector(chargeDensity[i + 1, j] - chargeDensity[i - 1, j], chargeDensity[i, j + 1] - chargeDensity[i, j - 1], 0)
+                                                             - (Dx * Dx / Dt) * _settings.MaterialMagneticPermeability * (currentDensity[i, j] - currentDensityPrevious[i, j]));
                     }
                     else
                     {
                         E[i, j] = (1 - _settings.Omega) * E[i, j]
-                                     + _settings.Omega / 4 * ((E[i + 1, j] + E[i - 1, j] + E[i, j + 1] + E[i, j - 1]
-                                                             + E0[i + 1, j] + E0[i - 1, j] + E0[i, j + 1] + E0[i, j - 1] - 4 * E0[i, j])
-                                                             - Dx/2 * _settings.VacuumElectricPermittivity * new Vector(chargeDensity[i+1,j] - chargeDensity[i-1,j], chargeDensity[i,j+1] - chargeDensity[i,j-1], 0)
-                                                             - (Dx * Dx / Dt) * _settings.VacuumMagneticPermeability * (currentDensity[i,j] - currentDensityPrevious[i,j]));
+                                     + _settings.Omega / 4 * (E[i + 1, j] + E[i - 1, j] + E[i, j + 1] + E[i, j - 1]
+                                                            + E0[i + 1, j] + E0[i - 1, j] + E0[i, j + 1] + E0[i, j - 1] - 4 * E0[i, j]);
                     }
                     
                     
@@ -276,7 +274,7 @@ namespace Eddy.NET
             {
                 for (int j = 1; j < _settings.ResolutionSpace + 1; j++)
                 {
-                    currentDensity[i,j] = _settings.MaterialConductivity * (E[i,j] + E0[i,j])
+                    currentDensity[i, j] = _settings.MaterialConductivity * (E[i, j] + E0[i, j]);
                 }
             });
         }
@@ -287,7 +285,7 @@ namespace Eddy.NET
             {
                 for (int j = 1; j < _settings.ResolutionSpace + 1; j++)
                 {
-                    chargeDensity[i,j] = chargeDensityPrevious[i,j] + (Dt/(2 * Dx)) * (currentDensity[i+1, j].X - currentDensity[i-1, j].X + currentDensity[i, j+1].Y - currentDensity[i, j-1].Y)
+                    chargeDensity[i, j] = chargeDensityPrevious[i, j] + (Dt / (2 * Dx)) * (currentDensity[i + 1, j].X - currentDensity[i - 1, j].X + currentDensity[i, j + 1].Y - currentDensity[i, j - 1].Y);
                 }
             });
         }
@@ -301,7 +299,7 @@ namespace Eddy.NET
                 {
                     if (isMaterial[i, j])
                     {
-                        force += Dx * Dx * Dx * currentDensity[i, j].Cross(B[i, j]);
+                        force += Dx * Dx * Dx * currentDensity[i, j].Cross(B[i, j] + B0[i,j]);
                     }
                 }
             }
