@@ -202,10 +202,20 @@ namespace Eddy.NET
                 {
                     Vector oldValue = B[i, j];
 
-                    B[i, j] = (1 - _settings.Omega) * B[i, j]
+                    if(isMaterial[i,j])
+                    {
+                        B[i, j] = (1 - _settings.Omega) * B[i, j]
                                      + _settings.Omega / 4 * ((B[i + 1, j] + B[i - 1, j] + B[i, j + 1] + B[i, j - 1]
                                                              + B0[i + 1, j] + B0[i - 1, j] + B0[i, j + 1] + B0[i, j - 1] - 4 * B0[i, j])
                                                              + Dx/2 * _settings.MaterialMagneticPermeability * new Vector(0,0,(currentDensity[i+1,j].Y - currentDensity[i-1,j].Y) - (currentDensity[i,j+1].X-currentDensity[i, j - 1].X)));
+                    }
+                    else
+                    {
+                        B[i, j] = (1 - _settings.Omega) * B[i, j]
+                                     + _settings.Omega / 4 * ((B[i + 1, j] + B[i - 1, j] + B[i, j + 1] + B[i, j - 1]
+                                                             + B0[i + 1, j] + B0[i - 1, j] + B0[i, j + 1] + B0[i, j - 1] - 4 * B0[i, j])
+                                                             + Dx/2 * _settings.VacuumMagneticPermeability * new Vector(0,0,(currentDensity[i+1,j].Y - currentDensity[i-1,j].Y) - (currentDensity[i,j+1].X-currentDensity[i, j - 1].X)));
+                    }
                     
                     delta = (B[i, j] - oldValue).Magnitude();
 
@@ -230,11 +240,23 @@ namespace Eddy.NET
                 {
                     Vector oldValue = E[i, j];
 
-                    E[i, j] = (1 - _settings.Omega) * E[i, j]
+                    if(isMaterial[i,j])
+                    {
+                        E[i, j] = (1 - _settings.Omega) * E[i, j]
                                      + _settings.Omega / 4 * ((E[i + 1, j] + E[i - 1, j] + E[i, j + 1] + E[i, j - 1]
                                                              + E0[i + 1, j] + E0[i - 1, j] + E0[i, j + 1] + E0[i, j - 1] - 4 * E0[i, j])
                                                              - Dx/2 * _settings.MaterialElectricPermittivity * new Vector(chargeDensity[i+1,j] - chargeDensity[i-1,j], chargeDensity[i,j+1] - chargeDensity[i,j-1], 0)
                                                              - (Dx * Dx / Dt) * _settings.MaterialMagneticPermeability * (currentDensity[i,j] - currentDensityPrevious[i,j]));
+                    }
+                    else
+                    {
+                        E[i, j] = (1 - _settings.Omega) * E[i, j]
+                                     + _settings.Omega / 4 * ((E[i + 1, j] + E[i - 1, j] + E[i, j + 1] + E[i, j - 1]
+                                                             + E0[i + 1, j] + E0[i - 1, j] + E0[i, j + 1] + E0[i, j - 1] - 4 * E0[i, j])
+                                                             - Dx/2 * _settings.VacuumElectricPermittivity * new Vector(chargeDensity[i+1,j] - chargeDensity[i-1,j], chargeDensity[i,j+1] - chargeDensity[i,j-1], 0)
+                                                             - (Dx * Dx / Dt) * _settings.VacuumMagneticPermeability * (currentDensity[i,j] - currentDensityPrevious[i,j]));
+                    }
+                    
                     
                     delta = (E[i, j] - oldValue).Magnitude();
 
