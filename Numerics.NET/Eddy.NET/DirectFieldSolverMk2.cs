@@ -29,6 +29,8 @@ namespace Eddy.NET
 
         private readonly SimulationSettings _settings;
 
+        private List<PhysicsOut> SimulationOutput;
+
         public DirectFieldSolverMk2(SimulationSettings settings)
         {
             _settings = settings;
@@ -83,13 +85,16 @@ namespace Eddy.NET
             position = new Vector(0, 0, 0);
             velocity = new Vector(_settings.InitialVelocity, 0, 0);
             acceleration = new Vector(0, 0, 0);
+
+            SimulationOutput = new List<PhysicsOut>();
         }
 
         public void Solve()
         {
             int steps = 0;
             double currentTime = _settings.TimeStart;
-            while (currentTime < _settings.TimeEnd)
+            PhysicsOut output = new PhysicsOut();
+            while (currentTime < _settings.TimeEnd && Console.ReadKey().Key != ConsoleKey.Escape)
             {
                 EMStep();
                 DynamicsStep();
@@ -107,7 +112,7 @@ namespace Eddy.NET
 
         public void PrintResults()
         {
-            // ... Logic to print the results of the simulation
+            SaveToFile(SimulationOutput, @"C:\temp\out.csv");
         }
 
         private void EMStep()
@@ -352,6 +357,8 @@ namespace Eddy.NET
 
         private void DynamicsStep()
         {
+            output.set(position, velocity, force);
+            SimulationOutput.Add(output);
             acceleration = (1.0 / Mass) * force;
             position += velocity * Dt;
             velocity += acceleration * Dt;
