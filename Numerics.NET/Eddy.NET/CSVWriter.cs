@@ -30,7 +30,6 @@ namespace Eddy.NET
         public static void SaveToFile<T>(List<T> list, string filePath)
         {
             SaveCsvToFile(ConvertToCsv<T>(list), filePath);
-            Console.WriteLine("CSV data saved to file: " + filePath);
         }
     }    
 }
