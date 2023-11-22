@@ -371,4 +371,24 @@ namespace Eddy.NET
         }
     }
 
+    private class PhysicsOut
+    {
+        public Vector Position { get; set; };
+        public Vector Velocity { get; set; };
+        public Vector Force { get; set; };
+
+        public PhysicsOut()
+        {
+            Position = new Vector(0, 0, 0);
+            Velocity = new Vector(0, 0, 0);
+            Force = new Vector(0, 0, 0);
+        }
+
+        public set(Vector position, Vector velocity, Vector force){
+            Position = position;
+            Velocity = velocity;
+            Force = force;
+        }
+    }
+
 }
