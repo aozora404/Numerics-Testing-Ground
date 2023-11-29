@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ILGPU;
+using ILGPU.Runtime;
+
 
 namespace Eddy.NET
 {
-    internal class DirectFieldSolverMk2 : IDifferentialEquationSolver
+    internal class DirectFieldSolverILGPU : IDifferentialEquationSolver
     {
         private double Dx;
         private double Dt;
@@ -31,7 +34,7 @@ namespace Eddy.NET
 
         private List<PhysicsOut> SimulationOutput;
 
-        public DirectFieldSolverMk2(SimulationSettings settings)
+        public DirectFieldSolverILGPU(SimulationSettings settings)
         {
             _settings = settings;
 
@@ -94,6 +97,11 @@ namespace Eddy.NET
             int steps = 0;
             double currentTime = _settings.TimeStart;
             PhysicsOut output = new PhysicsOut();
+
+            using var context = Context.CreateDefault();
+            using var accelerator = context.CreateCudaAccelerator(0);
+            using var kernel = accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView<double>>(JefimenkoKernel);
+
             while (currentTime < _settings.TimeEnd && Console.ReadKey().Key != ConsoleKey.Escape)
             {
                 EMStep();
@@ -108,6 +116,8 @@ namespace Eddy.NET
                     steps = 0;
                 }
             }
+
+            accelerator.Dispose();
         }
 
         public void PrintResults()
@@ -157,8 +167,7 @@ namespace Eddy.NET
         {
             EmbedB0();
             EmbedE0();
-            CalculateB();
-            CalculateE();
+            CalculateJefimenko();
         }
 
         private void CalculateCharge()
@@ -206,99 +215,22 @@ namespace Eddy.NET
             });
         }
 
-        private void CalculateB()
+        private void CalculateJefimenko()
         {
-            bool isConverged = false;
-            int iterationCount = 0;
-
-            while (!isConverged && iterationCount < _settings.MaxIterations)
-            {
-                isConverged = UpdateB();
-                iterationCount++;
-            }
-
-            Console.Write($"B Converged in {iterationCount} iterations. ");
+            
         }
 
-        private void CalculateE()
+        static private void JefimenkoKernel(
+            Index2D index,
+            int length,
+            ArrayView2D E,
+            ArrayView2D B,
+            ArrayView2D chargeDensity,
+            ArrayView2D currentDensity
+        )
         {
-            bool isConverged = false;
-            int iterationCount = 0;
-
-            while (!isConverged && iterationCount < _settings.MaxIterations)
-            {
-                isConverged = UpdateE();
-                iterationCount++;
-            }
-
-            Console.Write($"E Converged in {iterationCount} iterations. ");
-        }
-
-        private bool UpdateB()
-        {
-            bool isConverged = true;
-            double delta;
-
-            Parallel.For(0, _settings.ResolutionSpace, i =>
-            {
-                for (int j = 0; j < _settings.ResolutionSpace; j++)
-                {
-                    Vector oldValue = B[i, j];
-
-                    if(isMaterial[i,j])
-                    {
-                        B[i, j] = (1 - _settings.Omega) * B[i, j]
-                                     + _settings.Omega / 4 * ((B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
-                                                             + B0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B0[Math.Max(i - 1, 0), j] + B0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B0[i, Math.Max(j - 1, 0)] - 4 * B0[i, j])
-                                                             + Dx / 2 * _settings.MaterialMagneticPermeability * new Vector(0, 0, (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].Y - currentDensity[Math.Max(i - 1, 0), j].Y) - (currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].X - currentDensity[i, Math.Max(j - 1, 0)].X)));
-                    }
-                    else
-                    {
-                        B[i, j] = (1 - _settings.Omega) * B[i, j]
-                                     + _settings.Omega / 4 * ((B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
-                                                             + B0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B0[Math.Max(i - 1, 0), j] + B0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B0[i, Math.Max(j - 1, 0)] - 4 * B0[i, j])
-                                                             + Dx / 2 * _settings.VacuumMagneticPermeability * new Vector(0, 0, (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].Y - currentDensity[Math.Max(i - 1, 0), j].Y) - (currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].X - currentDensity[i, Math.Max(j - 1, 0)].X)));
-                    }
-                    
-                    delta = (B[i, j] - oldValue).Magnitude();
-
-                    if (delta > _settings.Tolerance)
-                    {
-                        isConverged = false;
-                    }
-                }
-            });
-
-            return isConverged;
-        }
-
-        private bool UpdateE()
-        {
-            bool isConverged = true;
-            double delta;
-
-            Parallel.For(0, _settings.ResolutionSpace, i =>
-            {
-                for (int j = 0; j < _settings.ResolutionSpace; j++)
-                {
-                    Vector oldValue = E[i, j];
-
-                    E[i, j] = (1 - _settings.Omega) * E[i, j]
-                              + _settings.Omega / 4 * ((E[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E[Math.Max(i - 1, 0), j] + E[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E[i, Math.Max(j - 1, 0)]
-                                                      + E0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E0[Math.Max(i - 1, 0), j] + E0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E0[i, Math.Max(j - 1, 0)] - 4 * E0[i, j])
-                                                      //- Dx / (2 * _settings.VacuumElectricPermittivity) * new Vector(chargeDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] - chargeDensity[Math.Max(i - 1, 0), j], chargeDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] - chargeDensity[i, Math.Max(j - 1, 0)], 0)
-                                                      - (Dx * Dx / Dt) * _settings.VacuumMagneticPermeability * (currentDensity[i, j] - currentDensityPrevious[i, j]));
-
-                    delta = (E[i, j] - oldValue).Magnitude();
-
-                    if (delta > _settings.Tolerance)
-                    {
-                        isConverged = false;
-                    }
-                }
-            });
-
-            return isConverged;
+            var x = index.X;
+            var y = index.Y;
         }
 
         private void CalculateCurrentDensity()
