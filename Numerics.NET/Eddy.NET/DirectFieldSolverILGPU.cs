@@ -1,3 +1,4 @@
+/*
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using ILGPU;
 using ILGPU.Runtime;
-
+using ILGPU.Runtime.Cuda;
 
 namespace Eddy.NET
 {
@@ -23,7 +24,6 @@ namespace Eddy.NET
         private Vector[,] E0;
 
         private Vector[,] currentDensity;
-        private Vector[,] currentDensityPrevious;
         private double[,] chargeDensity;
         private double[,] chargeDensityPrevious;
 
@@ -33,6 +33,7 @@ namespace Eddy.NET
         private readonly SimulationSettings _settings;
 
         private List<PhysicsOut> SimulationOutput;
+        private PhysicsOut output;
 
         public DirectFieldSolverILGPU(SimulationSettings settings)
         {
@@ -48,7 +49,6 @@ namespace Eddy.NET
             E0 = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
             
             currentDensity = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            currentDensityPrevious = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
             chargeDensity = new double[_settings.ResolutionSpace, _settings.ResolutionSpace];
             chargeDensityPrevious = new double[_settings.ResolutionSpace, _settings.ResolutionSpace];
 
@@ -64,7 +64,6 @@ namespace Eddy.NET
                     E0[i, j] = new Vector(0, 0, 0);
                     
                     currentDensity[i, j] = new Vector(0, 0, 0);
-                    currentDensityPrevious[i, j] = new Vector(0, 0, 0);
                     chargeDensity[i, j] = 0;
                     chargeDensityPrevious[i, j] = 0;
                     
@@ -90,6 +89,7 @@ namespace Eddy.NET
             acceleration = new Vector(0, 0, 0);
 
             SimulationOutput = new List<PhysicsOut>();
+            output = new PhysicsOut();
         }
 
         public void Solve()
@@ -99,8 +99,8 @@ namespace Eddy.NET
             PhysicsOut output = new PhysicsOut();
 
             using var context = Context.CreateDefault();
-            using var accelerator = context.CreateCudaAccelerator(0);
-            using var kernel = accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView<double>>(JefimenkoKernel);
+            using var accelerator = context.GetCudaDevice(0).CreateAccelerator(context);
+            var kernel = accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView<double>>(JefimenkoKernel);
 
             while (currentTime < _settings.TimeEnd && Console.ReadKey().Key != ConsoleKey.Escape)
             {
@@ -122,7 +122,7 @@ namespace Eddy.NET
 
         public void PrintResults()
         {
-            SaveToFile(SimulationOutput, @"C:\temp\out.csv");
+            CSVWriter.SaveToFile(SimulationOutput, @"C:\temp\out.csv");
         }
 
         private void EMStep()
@@ -223,7 +223,7 @@ namespace Eddy.NET
         static private void JefimenkoKernel(
             Index2D index,
             int length,
-            ArrayView2D E,
+            ArrayView2D<double> E,
             ArrayView2D B,
             ArrayView2D chargeDensity,
             ArrayView2D currentDensity
@@ -298,29 +298,8 @@ namespace Eddy.NET
 
         private void TimeStep()
         {
-            Array.Copy(currentDensity, currentDensityPrevious, currentDensityPrevious.Length);
             Array.Copy(chargeDensity, chargeDensityPrevious, chargeDensityPrevious.Length);
         }
     }
-
-    private class PhysicsOut
-    {
-        public Vector Position { get; set; };
-        public Vector Velocity { get; set; };
-        public Vector Force { get; set; };
-
-        public PhysicsOut()
-        {
-            Position = new Vector(0, 0, 0);
-            Velocity = new Vector(0, 0, 0);
-            Force = new Vector(0, 0, 0);
-        }
-
-        public set(Vector position, Vector velocity, Vector force){
-            Position = position;
-            Velocity = velocity;
-            Force = force;
-        }
-    }
-
 }
+*/

@@ -44,6 +44,14 @@
         "net6.0": {
           "targetAlias": "net6.0",
           "dependencies": {
+            "CsvHelper": {
+              "target": "Package",
+              "version": "[30.0.1, )"
+            },
+            "ILGPU": {
+              "target": "Package",
+              "version": "[1.5.1, )"
+            },
             "Sharprompt": {
               "target": "Package",
               "version": "[2.4.5, )"

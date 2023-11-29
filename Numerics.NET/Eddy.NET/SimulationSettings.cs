@@ -35,6 +35,6 @@ namespace Eddy.NET
 
         public double CoilRadius = 10.0;
         public double CoilMagneticFieldStrength = 1.0;
-        public double CoilDistance = 10.0;
+        public double CoilDistance = 0.0;
     }
 }

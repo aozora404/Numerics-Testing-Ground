@@ -8,6 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="30.0.1" />
+    <PackageReference Include="ILGPU" Version="1.5.1" />
     <PackageReference Include="Sharprompt" Version="2.4.5" />
   </ItemGroup>
 

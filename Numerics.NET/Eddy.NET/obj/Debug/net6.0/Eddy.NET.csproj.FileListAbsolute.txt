@@ -17,3 +17,5 @@ C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\Eddy.NET\bin\
 C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\Eddy.NET\bin\Debug\net6.0\de-DE\Sharprompt.resources.dll
 C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\Eddy.NET\bin\Debug\net6.0\ja\Sharprompt.resources.dll
 C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\Eddy.NET\obj\Debug\net6.0\Eddy.NET.csproj.CopyComplete
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\Eddy.NET\bin\Debug\net6.0\CsvHelper.dll
+C:\Aozora\高専\卒業研究\Numerics-Testing-Ground\Numerics.NET\Eddy.NET\bin\Debug\net6.0\ILGPU.dll

@@ -8,10 +8,28 @@
     ".NETCoreApp,Version=v6.0": {
       "Eddy.NET/1.0.0": {
         "dependencies": {
+          "CsvHelper": "30.0.1",
+          "ILGPU": "1.5.1",
           "Sharprompt": "2.4.5"
         },
         "runtime": {
           "Eddy.NET.dll": {}
+        }
+      },
+      "CsvHelper/30.0.1": {
+        "runtime": {
+          "lib/net6.0/CsvHelper.dll": {
+            "assemblyVersion": "30.0.0.0",
+            "fileVersion": "30.0.1.0"
+          }
+        }
+      },
+      "ILGPU/1.5.1": {
+        "runtime": {
+          "lib/net6.0/ILGPU.dll": {
+            "assemblyVersion": "1.5.1.0",
+            "fileVersion": "1.5.1.0"
+          }
         }
       },
       "Sharprompt/2.4.5": {
@@ -41,6 +59,20 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "CsvHelper/30.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-rcZtgbWR+As4G3Vpgx0AMNmShGuQLFjkHAPIIflzrfkJCx8/AOd4m96ZRmiU1Wi39qS5UVjV0P8qdgqOo5Cwyg==",
+      "path": "csvhelper/30.0.1",
+      "hashPath": "csvhelper.30.0.1.nupkg.sha512"
+    },
+    "ILGPU/1.5.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Q4URSxEqH+u0XE3XCtYZ2h3FZgLp9VOOeelvKCmniiTlKft0JNCs13EOqayWVjwvPUbD4w/XaFlP3CdmaRdj8w==",
+      "path": "ilgpu/1.5.1",
+      "hashPath": "ilgpu.1.5.1.nupkg.sha512"
     },
     "Sharprompt/2.4.5": {
       "type": "package",

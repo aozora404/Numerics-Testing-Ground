@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.IO;
 using CsvHelper;
 using CsvHelper.Configuration;
+using System.Globalization;
 
 namespace Eddy.NET
 {
