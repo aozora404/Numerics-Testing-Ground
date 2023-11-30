@@ -8,22 +8,35 @@ namespace Eddy.NET
 {
     public class PhysicsOut
     {
-        public Vector Position;
-        public Vector Velocity;
-        public Vector Force;
+        public double Time { get; set; }
 
-        public PhysicsOut()
-        {
-            Position = new Vector(0, 0, 0);
-            Velocity = new Vector(0, 0, 0);
-            Force = new Vector(0, 0, 0);
-        }
+        public double PositionX { get; set; }
+        public double PositionY { get; set; }
+        public double PositionZ { get; set; }
 
-        public void set(Vector position, Vector velocity, Vector force)
+        public double VelocityX { get; set; }
+        public double VelocityY { get; set; }
+        public double VelocityZ { get; set; }
+
+        public double ForceX { get; set; }
+        public double ForceY { get; set; }
+        public double ForceZ { get; set; }
+
+        public PhysicsOut(Vector position, Vector velocity, Vector force, double time)
         {
-            Position = position;
-            Velocity = velocity;
-            Force = force;
+            PositionX = position.X;
+            PositionY = position.Y;
+            PositionZ = position.Z;
+
+            VelocityX = velocity.X;
+            VelocityY = velocity.Y;
+            VelocityZ = velocity.Z;
+
+            ForceX = force.X;
+            ForceY = force.Y;
+            ForceZ = force.Z;
+
+            Time = time;
         }
     }
 }

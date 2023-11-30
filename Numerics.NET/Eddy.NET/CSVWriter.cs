@@ -12,7 +12,7 @@ namespace Eddy.NET
 {
     internal static class CSVWriter
     {
-        private static string ConvertToCsv<T>(List<T> list)
+        private static string ConvertToCsv(List<PhysicsOut> list)
         {
             using (var writer = new StringWriter())
             using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)))
@@ -28,9 +28,9 @@ namespace Eddy.NET
             Console.WriteLine("CSV data saved to file: " + filePath);
         }
 
-        public static void SaveToFile<T>(List<T> list, string filePath)
+        public static void SaveToFile(List<PhysicsOut> list, string filePath)
         {
-            SaveCsvToFile(ConvertToCsv<T>(list), filePath);
+            SaveCsvToFile(ConvertToCsv(list), filePath);
         }
     }    
 }

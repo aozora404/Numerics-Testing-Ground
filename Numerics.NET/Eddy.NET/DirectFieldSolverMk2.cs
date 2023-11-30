@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -31,7 +32,6 @@ namespace Eddy.NET
         private readonly SimulationSettings _settings;
 
         private List<PhysicsOut> SimulationOutput;
-        private PhysicsOut output;
 
         public DirectFieldSolverMk2(SimulationSettings settings)
         {
@@ -89,7 +89,6 @@ namespace Eddy.NET
             acceleration = new Vector(0, 0, 0);
 
             SimulationOutput = new List<PhysicsOut>();
-            output = new PhysicsOut();
         }
 
         public void Solve()
@@ -100,7 +99,7 @@ namespace Eddy.NET
             while (currentTime < _settings.TimeEnd && !Console.KeyAvailable)
             {
                 EMStep();
-                DynamicsStep();
+                DynamicsStep(currentTime);
                 TimeStep();
                 currentTime += Dt;
                 Console.WriteLine($"Position: {position:f2} mm Velocity: {velocity:f2} mm/s Force: {force:f2} mN Time: {currentTime * 1000:f2} ms");
@@ -115,7 +114,7 @@ namespace Eddy.NET
 
         public void PrintResults()
         {
-            CSVWriter.SaveToFile(SimulationOutput, @"C:\temp\out.csv");
+            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\outDirectFieldSolverMk2{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
         }
 
         private void EMStep()
@@ -131,6 +130,7 @@ namespace Eddy.NET
         {
             Vector EParallel, E0Parallel, BParallel, B0Parallel;
             Vector EPerpendicular, E0Perpendicular, BPerpendicular, B0Perpendicular;
+            Vector JParallel, JPerpendicular;
             Vector unitVelocity = velocity / velocity.Magnitude();
             double gamma = 1.0 / Math.Sqrt(1 - (velocity.Dot(velocity)) / (_settings.c * _settings.c));
             Parallel.For(0, _settings.ResolutionSpace, i =>
@@ -141,17 +141,20 @@ namespace Eddy.NET
                     E0Parallel = E0[i, j].Dot(unitVelocity) * unitVelocity;
                     BParallel = B[i, j].Dot(unitVelocity) * unitVelocity;
                     B0Parallel = B0[i, j].Dot(unitVelocity) * unitVelocity;
+                    JParallel = currentDensity[i,j].Dot(unitVelocity) * unitVelocity;
 
                     EPerpendicular = E[i, j] - EParallel;
                     E0Perpendicular = E0[i, j] - E0Parallel;
                     BPerpendicular = B[i, j] - BParallel;
                     B0Perpendicular = B0[i, j] - B0Parallel;
+                    JPerpendicular = currentDensity[i,j] - JParallel;
 
                     E[i, j] = EParallel + gamma * (EPerpendicular + velocity.Cross(BPerpendicular));
                     E0[i, j] = E0Parallel + gamma * (E0Perpendicular + velocity.Cross(B0Perpendicular));
                     B[i, j] = BParallel + gamma * (BPerpendicular - 1.0/(_settings.c * _settings.c) * velocity.Cross(EPerpendicular));
                     B0[i, j] = B0Parallel + gamma * (B0Perpendicular - 1.0 / (_settings.c * _settings.c) * velocity.Cross(E0Perpendicular));
-
+                    //currentDensity[i, j] = JPerpendicular + gamma * (JParallel - chargeDensity[i, j] * velocity);
+                    //chargeDensity[i, j] = gamma * (chargeDensity[i, j] - velocity.Dot(JParallel) / (_settings.c * _settings.c));
                 }
             });
         }
@@ -185,7 +188,7 @@ namespace Eddy.NET
 
                     s = relPosition + position - coilOrigin;
 
-                    if (s.Magnitude() > _settings.CoilRadius)
+                    if (s.Magnitude() < _settings.CoilRadius)
                     {
                         B0[i, j] = new Vector(0, 0, _settings.CoilMagneticFieldStrength);
                     }
@@ -248,20 +251,10 @@ namespace Eddy.NET
                 {
                     Vector oldValue = B[i, j];
 
-                    if(isMaterial[i,j])
-                    {
-                        B[i, j] = (1 - _settings.Omega) * B[i, j]
-                                     + _settings.Omega / 4 * (B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
-                                                             //+ B0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B0[Math.Max(i - 1, 0), j] + B0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B0[i, Math.Max(j - 1, 0)] - 4 * B0[i, j])
-                                                             + Dx / 2 * _settings.MaterialMagneticPermeability * new Vector(0, 0, (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].Y - currentDensity[Math.Max(i - 1, 0), j].Y) - (currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].X - currentDensity[i, Math.Max(j - 1, 0)].X)));
-                    }
-                    else
-                    {
-                        B[i, j] = (1 - _settings.Omega) * B[i, j]
-                                     + _settings.Omega / 4 * (B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
-                                                             //+ B0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B0[Math.Max(i - 1, 0), j] + B0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B0[i, Math.Max(j - 1, 0)] - 4 * B0[i, j])
+                    B[i, j] = (1 - _settings.Omega) * B[i, j]
+                                     + _settings.Omega / 4 * ((B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
+                                                             + B0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B0[Math.Max(i - 1, 0), j] + B0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B0[i, Math.Max(j - 1, 0)] - 4 * B0[i, j])
                                                              + Dx / 2 * _settings.VacuumMagneticPermeability * new Vector(0, 0, (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].Y - currentDensity[Math.Max(i - 1, 0), j].Y) - (currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].X - currentDensity[i, Math.Max(j - 1, 0)].X)));
-                    }
                     
                     delta = (B[i, j] - oldValue).Magnitude();
 
@@ -287,10 +280,11 @@ namespace Eddy.NET
                     Vector oldValue = E[i, j];
 
                     E[i, j] = (1 - _settings.Omega) * E[i, j]
-                              + _settings.Omega / 4 * (E[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E[Math.Max(i - 1, 0), j] + E[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E[i, Math.Max(j - 1, 0)]
-                                                      //+ E0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E0[Math.Max(i - 1, 0), j] + E0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E0[i, Math.Max(j - 1, 0)] - 4 * E0[i, j])
-                                                      - Dx / (2 * _settings.VacuumElectricPermittivity) * new Vector(chargeDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] - chargeDensity[Math.Max(i - 1, 0), j], chargeDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] - chargeDensity[i, Math.Max(j - 1, 0)], 0)
-                                                      - (Dx * Dx / Dt) * _settings.VacuumMagneticPermeability * (currentDensity[i, j] - currentDensityPrevious[i, j]));
+                              + _settings.Omega / 4 * ((E[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E[Math.Max(i - 1, 0), j] + E[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E[i, Math.Max(j - 1, 0)]
+                                                      + E0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E0[Math.Max(i - 1, 0), j] + E0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E0[i, Math.Max(j - 1, 0)] - 4 * E0[i, j])
+                                                      //- Dx / (2 * _settings.VacuumElectricPermittivity) * new Vector(chargeDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] - chargeDensity[Math.Max(i - 1, 0), j], chargeDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] - chargeDensity[i, Math.Max(j - 1, 0)], 0)
+                                                      - (Dx * Dx / Dt) * _settings.VacuumMagneticPermeability * (currentDensity[i, j] - currentDensityPrevious[i, j])
+                                                      );
 
                     delta = (E[i, j] - oldValue).Magnitude();
 
@@ -329,14 +323,18 @@ namespace Eddy.NET
             {
                 for (int j = 0; j < _settings.ResolutionSpace; j++)
                 {
+
+                    chargeDensity[i, j] = chargeDensityPrevious[i, j] + (Dt / (2 * Dx)) * (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].X - currentDensity[Math.Max(i - 1, 0), j].X + currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].Y - currentDensity[i, Math.Max(j - 1, 0)].Y);
+                    /*
                     if (isMaterial[i, j])
                     {
-                        chargeDensity[i, j] = chargeDensityPrevious[i, j] + (Dt / (2 * Dx)) * (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].X - currentDensity[Math.Max(i - 1, 0), j].X + currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].Y - currentDensity[i, Math.Max(j - 1, 0)].Y);
+                        
                     }
                     else
                     {
                         chargeDensity[i, j] = 0;
                     }
+                    */
                     
                 }
             });
@@ -358,10 +356,9 @@ namespace Eddy.NET
             force *= 2;
         }
 
-        private void DynamicsStep()
+        private void DynamicsStep(double time)
         {
-            output.set(position, velocity, force);
-            SimulationOutput.Add(output);
+            SimulationOutput.Add(new PhysicsOut(position, velocity, force, time));
             acceleration = (1.0 / Mass) * force;
             position += velocity * Dt;
             velocity += acceleration * Dt;
