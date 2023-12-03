@@ -37,20 +37,19 @@ Distance = {settings.CoilDistance} mm
         {
             IDifferentialEquationSolver solver;
 
-            //var simulationType = Prompt.Select("Choose a simulation method", new[] { "Potential", "Direct Field" });
+            var simulationType = Prompt.Select("Choose a simulation", new[] { "Legacy", "Mk2" });
 
-            /*
-            if (simulationType == "Potential")
+            
+            if (simulationType == "Legacy")
             {
-                solver = new EddyCurrentSolver(settings);
+                solver = new DirectFieldSolverLegacy(settings);
             }
             else
             {
-                solver = new DirectFieldSolver(settings);
+                solver = new DirectFieldSolverMk2(settings);
             }
-            */
+            
 
-            solver = new DirectFieldSolverMk2(settings);
             solver.Solve();
             solver.PrintResults();
         }

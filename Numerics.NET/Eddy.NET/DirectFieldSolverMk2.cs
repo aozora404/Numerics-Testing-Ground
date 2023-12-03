@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -119,10 +118,10 @@ namespace Eddy.NET
 
         private void EMStep()
         {
-            LorentzShift(velocity);
+            //LorentzShift(velocity);
             CalculateField();
             CalculateCharge();
-            LorentzShift(-velocity);
+            //LorentzShift(-velocity);
             CalculateForce();
         }
 
@@ -207,7 +206,7 @@ namespace Eddy.NET
             {
                 for (int j = 0; j < _settings.ResolutionSpace; j++)
                 {
-                    E0[i, j] = new Vector(0, 0, 0);
+                    E0[i, j] = velocity.Cross(B0[i, j]);
                 }
             });
         }

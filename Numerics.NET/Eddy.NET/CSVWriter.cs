@@ -24,7 +24,9 @@ namespace Eddy.NET
 
         private static void SaveCsvToFile(string csv, string filePath)
         {
-            File.WriteAllText(filePath, csv);
+            FileInfo file = new FileInfo(filePath);
+            file.Directory.Create();
+            File.WriteAllText(file.FullName, csv);
             Console.WriteLine("CSV data saved to file: " + filePath);
         }
 

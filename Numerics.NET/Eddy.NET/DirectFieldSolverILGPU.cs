@@ -32,8 +32,8 @@ namespace Eddy.NET
         private readonly SimulationSettings _settings;
 
         private List<PhysicsOut> SimulationOutput;
-        private PhysicsOut output;
 
+        
         public DirectFieldSolverILGPU(SimulationSettings settings)
         {
             _settings = settings;
@@ -101,8 +101,8 @@ namespace Eddy.NET
 
             while (currentTime < _settings.TimeEnd && !Console.KeyAvailable)
             {
-                EMStep();
-                DynamicsStep();
+                EMStep(accelerator);
+                DynamicsStep(currentTime);
                 TimeStep();
                 currentTime += Dt;
                 Console.WriteLine($"Position: {position:f2} mm Velocity: {velocity:f2} mm/s Force: {force:f2} mN Time: {currentTime * 1000:f2} ms");
@@ -120,10 +120,10 @@ namespace Eddy.NET
             CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\DirectFieldSolverILGPU\out{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
         }
 
-        private void EMStep()
+        private void EMStep(Accelerator accelerator)
         {
             LorentzShift(velocity);
-            CalculateField();
+            CalculateField(accelerator);
             CalculateCharge();
             LorentzShift(-velocity);
             CalculateForce();
@@ -162,11 +162,11 @@ namespace Eddy.NET
             });
         }
 
-        private void CalculateField()
+        private void CalculateField(Accelerator accelerator)
         {
             EmbedB0();
             EmbedE0();
-            CalculateJefimenko();
+            CalculateJefimenko(accelerator);
         }
 
         private void CalculateCharge()
@@ -214,16 +214,25 @@ namespace Eddy.NET
             });
         }
 
-        private void CalculateJefimenko()
+        private void CalculateJefimenko(Accelerator accelerator)
         {
-            var kernel = accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView<double>>(JefimenkoKernel);
+            var kernel = accelerator.LoadAutoGroupedStreamKernel<
+                Index2D, 
+                ArrayView2D<Vector, Stride2D.DenseX>,
+                ArrayView2D<Vector, Stride2D.DenseX>,
+                ArrayView2D<double, Stride2D.DenseX>,
+                ArrayView2D<Vector, Stride2D.DenseX>>
+                (JefimenkoKernel);
             
-            using var bufferE = accelerator.Allocate2D<Vector>(_settings.ResolutionSpace, _settings.ResolutionSpace);
-            using var bufferB = accelerator.Allocate2D<Vector>(_settings.ResolutionSpace, _settings.ResolutionSpace);
-            using var bufferChargeDensity = accelerator.Allocate2D<double>(chargeDensity);
-            using var bufferCurrentDensity = accelerator.Allocate2D<Vector>(currentDensity);
-            
-            kernel();
+            using var bufferE = accelerator.Allocate2DDenseX<Vector>(new Index2D(_settings.ResolutionSpace, _settings.ResolutionSpace));
+            using var bufferB = accelerator.Allocate2DDenseX<Vector>(new Index2D(_settings.ResolutionSpace, _settings.ResolutionSpace));
+            using var bufferChargeDensity = accelerator.Allocate2DDenseX<double>(new Index2D(_settings.ResolutionSpace, _settings.ResolutionSpace));
+            using var bufferCurrentDensity = accelerator.Allocate2DDenseX<Vector>(new Index2D(_settings.ResolutionSpace, _settings.ResolutionSpace));
+
+            bufferChargeDensity.CopyFromCPU(chargeDensity);
+            bufferCurrentDensity.CopyFromCPU(currentDensity);
+
+            kernel(bufferE.Extent.ToIntIndex(), bufferE.View, bufferB.View, bufferChargeDensity.View, bufferCurrentDensity.View);
             
             E = bufferE.GetAsArray2D();
             B = bufferB.GetAsArray2D();
@@ -231,15 +240,14 @@ namespace Eddy.NET
 
         static private void JefimenkoKernel(
             Index2D index,
-            int length,
-            ArrayView2D<Vector> E,
-            ArrayView2D<Vector> B,
-            ArrayView2D<double> chargeDensity,
-            ArrayView2D<Vector> currentDensity
+            ArrayView2D<Vector, Stride2D.DenseX> E,
+            ArrayView2D<Vector, Stride2D.DenseX> B,
+            ArrayView2D<double, Stride2D.DenseX> chargeDensity,
+            ArrayView2D<Vector, Stride2D.DenseX> currentDensity
         )
         {
-            var x = index.X;
-            var y = index.Y;
+            int x = index.X;
+            int y = index.Y;
         }
 
         private void CalculateCurrentDensity()
@@ -296,7 +304,7 @@ namespace Eddy.NET
             force *= 2;
         }
 
-        private void DynamicsStep()
+        private void DynamicsStep(double time)
         {
             SimulationOutput.Add(new PhysicsOut(position, velocity, force, time));
             acceleration = (1.0 / Mass) * force;
