@@ -114,7 +114,7 @@ namespace Eddy.NET
 
         public void PrintResults()
         {
-            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\outDirectFieldSolverMk2{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
+            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\DirectFieldSolverMk2\out{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
         }
 
         private void EMStep()

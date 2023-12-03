@@ -1,4 +1,3 @@
-/*
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -89,20 +88,18 @@ namespace Eddy.NET
             acceleration = new Vector(0, 0, 0);
 
             SimulationOutput = new List<PhysicsOut>();
-            output = new PhysicsOut();
         }
 
         public void Solve()
         {
             int steps = 0;
             double currentTime = _settings.TimeStart;
-            PhysicsOut output = new PhysicsOut();
 
             using var context = Context.CreateDefault();
-            using var accelerator = context.GetCudaDevice(0).CreateAccelerator(context);
-            var kernel = accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView<double>>(JefimenkoKernel);
+            using var accelerator = context.GetPreferredDevice(preferCPU: false).CreateAccelerator(context);
+            
 
-            while (currentTime < _settings.TimeEnd && Console.ReadKey().Key != ConsoleKey.Escape)
+            while (currentTime < _settings.TimeEnd && !Console.KeyAvailable)
             {
                 EMStep();
                 DynamicsStep();
@@ -116,13 +113,11 @@ namespace Eddy.NET
                     steps = 0;
                 }
             }
-
-            accelerator.Dispose();
         }
 
         public void PrintResults()
         {
-            CSVWriter.SaveToFile(SimulationOutput, @"C:\temp\out.csv");
+            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\DirectFieldSolverILGPU\out{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
         }
 
         private void EMStep()
@@ -138,6 +133,7 @@ namespace Eddy.NET
         {
             Vector EParallel, E0Parallel, BParallel, B0Parallel;
             Vector EPerpendicular, E0Perpendicular, BPerpendicular, B0Perpendicular;
+            Vector JParallel, JPerpendicular;
             Vector unitVelocity = velocity / velocity.Magnitude();
             double gamma = 1.0 / Math.Sqrt(1 - (velocity.Dot(velocity)) / (_settings.c * _settings.c));
             Parallel.For(0, _settings.ResolutionSpace, i =>
@@ -148,17 +144,20 @@ namespace Eddy.NET
                     E0Parallel = E0[i, j].Dot(unitVelocity) * unitVelocity;
                     BParallel = B[i, j].Dot(unitVelocity) * unitVelocity;
                     B0Parallel = B0[i, j].Dot(unitVelocity) * unitVelocity;
+                    JParallel = currentDensity[i,j].Dot(unitVelocity) * unitVelocity;
 
                     EPerpendicular = E[i, j] - EParallel;
                     E0Perpendicular = E0[i, j] - E0Parallel;
                     BPerpendicular = B[i, j] - BParallel;
                     B0Perpendicular = B0[i, j] - B0Parallel;
+                    JPerpendicular = currentDensity[i,j] - JParallel;
 
                     E[i, j] = EParallel + gamma * (EPerpendicular + velocity.Cross(BPerpendicular));
                     E0[i, j] = E0Parallel + gamma * (E0Perpendicular + velocity.Cross(B0Perpendicular));
                     B[i, j] = BParallel + gamma * (BPerpendicular - 1.0/(_settings.c * _settings.c) * velocity.Cross(EPerpendicular));
                     B0[i, j] = B0Parallel + gamma * (B0Perpendicular - 1.0 / (_settings.c * _settings.c) * velocity.Cross(E0Perpendicular));
-
+                    currentDensity[i, j] = JPerpendicular + gamma * (JParallel - chargeDensity[i, j] * velocity);
+                    chargeDensity[i, j] = gamma * (chargeDensity[i, j] - velocity.Dot(JParallel) / (_settings.c * _settings.c));
                 }
             });
         }
@@ -217,16 +216,26 @@ namespace Eddy.NET
 
         private void CalculateJefimenko()
         {
+            var kernel = accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView<double>>(JefimenkoKernel);
             
+            using var bufferE = accelerator.Allocate2D<Vector>(_settings.ResolutionSpace, _settings.ResolutionSpace);
+            using var bufferB = accelerator.Allocate2D<Vector>(_settings.ResolutionSpace, _settings.ResolutionSpace);
+            using var bufferChargeDensity = accelerator.Allocate2D<double>(chargeDensity);
+            using var bufferCurrentDensity = accelerator.Allocate2D<Vector>(currentDensity);
+            
+            kernel();
+            
+            E = bufferE.GetAsArray2D();
+            B = bufferB.GetAsArray2D();
         }
 
         static private void JefimenkoKernel(
             Index2D index,
             int length,
-            ArrayView2D<double> E,
-            ArrayView2D B,
-            ArrayView2D chargeDensity,
-            ArrayView2D currentDensity
+            ArrayView2D<Vector> E,
+            ArrayView2D<Vector> B,
+            ArrayView2D<double> chargeDensity,
+            ArrayView2D<Vector> currentDensity
         )
         {
             var x = index.X;
@@ -289,8 +298,7 @@ namespace Eddy.NET
 
         private void DynamicsStep()
         {
-            output.set(position, velocity, force);
-            SimulationOutput.Add(output);
+            SimulationOutput.Add(new PhysicsOut(position, velocity, force, time));
             acceleration = (1.0 / Mass) * force;
             position += velocity * Dt;
             velocity += acceleration * Dt;
@@ -302,4 +310,3 @@ namespace Eddy.NET
         }
     }
 }
-*/

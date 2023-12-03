@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Eddy.NET
 {
-    public class Vector2D
+    public struct Vector2D
     {
         public double X { get; set; } = 0;
         public double Y { get; set; } = 0;
