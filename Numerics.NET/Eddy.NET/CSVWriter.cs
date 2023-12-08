@@ -22,6 +22,10 @@ namespace Eddy.NET
             }
         }
 
+        private static string ArrayToCsv(double[,] data){
+            string output = "";
+        }
+
         private static void SaveCsvToFile(string csv, string filePath)
         {
             FileInfo file = new FileInfo(filePath);

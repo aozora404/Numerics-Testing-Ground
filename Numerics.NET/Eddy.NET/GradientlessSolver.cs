@@ -7,7 +7,7 @@ using System.Windows.Input;
 
 namespace Eddy.NET
 {
-    internal class DirectFieldSolverMk2 : IDifferentialEquationSolver
+    internal class GradientlessSolver : IDifferentialEquationSolver
     {
         private double Dx;
         private double Dt;
@@ -16,14 +16,13 @@ namespace Eddy.NET
         private bool[,] isMaterial;
 
         private Vector[,] B;
+        private Vector[,] BPrevious;
         private Vector[,] B0;
-        private Vector[,] E;
-        private Vector[,] E0;
+        private Vector[,] B0Previous;
+
 
         private Vector[,] currentDensity;
         private Vector[,] currentDensityPrevious;
-        private double[,] chargeDensity;
-        private double[,] chargeDensityPrevious;
 
         private Vector force;
         private Vector position, velocity, acceleration;
@@ -32,7 +31,7 @@ namespace Eddy.NET
 
         private List<PhysicsOut> SimulationOutput;
 
-        public DirectFieldSolverMk2(SimulationSettings settings)
+        public GradientlessSolver(SimulationSettings settings)
         {
             _settings = settings;
 
