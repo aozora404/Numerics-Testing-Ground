@@ -19,10 +19,9 @@ namespace Eddy.NET
         private Vector[,] BPrevious;
         private Vector[,] B0;
         private Vector[,] B0Previous;
-
+        private Vector[,] deltaB;
 
         private Vector[,] currentDensity;
-        private Vector[,] currentDensityPrevious;
 
         private Vector force;
         private Vector position, velocity, acceleration;
@@ -41,14 +40,12 @@ namespace Eddy.NET
 
             B = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
             B0 = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            E = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            E0 = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            
-            currentDensity = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            currentDensityPrevious = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            chargeDensity = new double[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            chargeDensityPrevious = new double[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            BPrevious = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            B0Previous = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            deltaB = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
 
+            currentDensity = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            
             isMaterial = new bool[_settings.ResolutionSpace, _settings.ResolutionSpace];
 
             Parallel.For(0, _settings.ResolutionSpace, i =>
@@ -57,13 +54,11 @@ namespace Eddy.NET
                 {
                     B[i, j] = new Vector(0, 0, 0);
                     B0[i, j] = new Vector(0, 0, 0);
-                    E[i, j] = new Vector(0, 0, 0);
-                    E0[i, j] = new Vector(0, 0, 0);
+                    BPrevious[i, j] = new Vector(0, 0, 0);
+                    B0Previous[i, j] = new Vector(0, 0, 0);
+                    deltaB[i, j] = new Vector(0, 0, 0);
                     
                     currentDensity[i, j] = new Vector(0, 0, 0);
-                    currentDensityPrevious[i, j] = new Vector(0, 0, 0);
-                    chargeDensity[i, j] = 0;
-                    chargeDensityPrevious[i, j] = 0;
                     
                     double x = (i * 1.0 / _settings.ResolutionSpace) - 0.5;
                     double y = (j * 1.0 / _settings.ResolutionSpace) - 0.5;
@@ -112,63 +107,25 @@ namespace Eddy.NET
 
         public void PrintResults()
         {
-            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\DirectFieldSolverMk2\out{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
+            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\Gradientless\out{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
         }
 
         private void EMStep()
         {
-            LorentzShift(velocity);
             CalculateField();
             CalculateCharge();
-            LorentzShift(-velocity);
             CalculateForce();
-        }
-
-        private void LorentzShift(Vector velocity)
-        {
-            Vector EParallel, E0Parallel, BParallel, B0Parallel;
-            Vector EPerpendicular, E0Perpendicular, BPerpendicular, B0Perpendicular;
-            Vector JParallel, JPerpendicular;
-            Vector unitVelocity = velocity / velocity.Magnitude();
-            double gamma = 1.0 / Math.Sqrt(1 - (velocity.Dot(velocity)) / (_settings.c * _settings.c));
-            Parallel.For(0, _settings.ResolutionSpace, i =>
-            {
-                for (int j = 0; j < _settings.ResolutionSpace; j++)
-                {
-                    EParallel = E[i, j].Dot(unitVelocity) * unitVelocity;
-                    E0Parallel = E0[i, j].Dot(unitVelocity) * unitVelocity;
-                    BParallel = B[i, j].Dot(unitVelocity) * unitVelocity;
-                    B0Parallel = B0[i, j].Dot(unitVelocity) * unitVelocity;
-                    JParallel = currentDensity[i,j].Dot(unitVelocity) * unitVelocity;
-
-                    EPerpendicular = E[i, j] - EParallel;
-                    E0Perpendicular = E0[i, j] - E0Parallel;
-                    BPerpendicular = B[i, j] - BParallel;
-                    B0Perpendicular = B0[i, j] - B0Parallel;
-                    JPerpendicular = currentDensity[i,j] - JParallel;
-
-                    E[i, j] = EParallel + gamma * (EPerpendicular + velocity.Cross(BPerpendicular));
-                    E0[i, j] = E0Parallel + gamma * (E0Perpendicular + velocity.Cross(B0Perpendicular));
-                    B[i, j] = BParallel + gamma * (BPerpendicular - 1.0/(_settings.c * _settings.c) * velocity.Cross(EPerpendicular));
-                    B0[i, j] = B0Parallel + gamma * (B0Perpendicular - 1.0 / (_settings.c * _settings.c) * velocity.Cross(E0Perpendicular));
-                    //currentDensity[i, j] = JPerpendicular + gamma * (JParallel - chargeDensity[i, j] * velocity);
-                    //chargeDensity[i, j] = gamma * (chargeDensity[i, j] - velocity.Dot(JParallel) / (_settings.c * _settings.c));
-                }
-            });
         }
 
         private void CalculateField()
         {
             EmbedB0();
-            EmbedE0();
             CalculateB();
-            CalculateE();
         }
 
         private void CalculateCharge()
         {
             CalculateCurrentDensity(); 
-            CalculateChargeDensity();
         }
 
         private void EmbedB0()
@@ -186,7 +143,7 @@ namespace Eddy.NET
 
                     s = relPosition + position - coilOrigin;
 
-                    if (s.Magnitude() < _settings.CoilRadius)
+                    if (s.X > 0)
                     {
                         B0[i, j] = new Vector(0, 0, _settings.CoilMagneticFieldStrength);
                     }
@@ -195,17 +152,6 @@ namespace Eddy.NET
                         B0[i, j] = new Vector(0, 0, 0);
                     }
 
-                }
-            });
-        }
-
-        private void EmbedE0()
-        {
-            Parallel.For(0, _settings.ResolutionSpace, i =>
-            {
-                for (int j = 0; j < _settings.ResolutionSpace; j++)
-                {
-                    E0[i, j] = new Vector(0, 0, 0);
                 }
             });
         }
@@ -222,20 +168,14 @@ namespace Eddy.NET
             }
 
             Console.Write($"B Converged in {iterationCount} iterations. ");
-        }
 
-        private void CalculateE()
-        {
-            bool isConverged = false;
-            int iterationCount = 0;
-
-            while (!isConverged && iterationCount < _settings.MaxIterations)
+            Parallel.For(0, _settings.ResolutionSpace, i =>
             {
-                isConverged = UpdateE();
-                iterationCount++;
-            }
-
-            Console.Write($"E Converged in {iterationCount} iterations. ");
+                for (int j = 0; j < _settings.ResolutionSpace; j++)
+                {
+                    deltaB[i, j] = (B[i,j] + B0[i,j] - BPrevious[i,j] - B0Previous[i,j]) / Dt;
+                }
+            });
         }
 
         private bool UpdateB()
@@ -250,9 +190,8 @@ namespace Eddy.NET
                     Vector oldValue = B[i, j];
 
                     B[i, j] = (1 - _settings.Omega) * B[i, j]
-                                     + _settings.Omega / 4 * ((B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
-                                                             + B0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B0[Math.Max(i - 1, 0), j] + B0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B0[i, Math.Max(j - 1, 0)] - 4 * B0[i, j])
-                                                             + Dx / 2 * _settings.VacuumMagneticPermeability * new Vector(0, 0, (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].Y - currentDensity[Math.Max(i - 1, 0), j].Y) - (currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].X - currentDensity[i, Math.Max(j - 1, 0)].X)));
+                                     + _settings.Omega / 4 * (B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
+                                                             - Dx / 2 * _settings.VacuumMagneticPermeability * new Vector(0, 0, (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].Y - currentDensity[Math.Max(i - 1, 0), j].Y) - (currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].X - currentDensity[i, Math.Max(j - 1, 0)].X)));
                     
                     delta = (B[i, j] - oldValue).Magnitude();
 
@@ -266,7 +205,21 @@ namespace Eddy.NET
             return isConverged;
         }
 
-        private bool UpdateE()
+        private void CalculateCurrentDensity()
+        {
+            bool isConverged = false;
+            int iterationCount = 0;
+
+            while (!isConverged && iterationCount < _settings.MaxIterations)
+            {
+                isConverged = UpdateCurrentDensity();
+                iterationCount++;
+            }
+
+            Console.Write($"J Converged in {iterationCount} iterations. ");
+        }
+
+        private bool UpdateCurrentDensity()
         {
             bool isConverged = true;
             double delta;
@@ -275,16 +228,13 @@ namespace Eddy.NET
             {
                 for (int j = 0; j < _settings.ResolutionSpace; j++)
                 {
-                    Vector oldValue = E[i, j];
+                    Vector oldValue = currentDensity[i, j];
 
-                    E[i, j] = (1 - _settings.Omega) * E[i, j]
-                              + _settings.Omega / 4 * ((E[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E[Math.Max(i - 1, 0), j] + E[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E[i, Math.Max(j - 1, 0)]
-                                                      + E0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E0[Math.Max(i - 1, 0), j] + E0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E0[i, Math.Max(j - 1, 0)] - 4 * E0[i, j])
-                                                      //- Dx / (2 * _settings.VacuumElectricPermittivity) * new Vector(chargeDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] - chargeDensity[Math.Max(i - 1, 0), j], chargeDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] - chargeDensity[i, Math.Max(j - 1, 0)], 0)
-                                                      - (Dx * Dx / Dt) * _settings.VacuumMagneticPermeability * (currentDensity[i, j] - currentDensityPrevious[i, j])
-                                                      );
-
-                    delta = (E[i, j] - oldValue).Magnitude();
+                    currentDensity[i, j] = (1 - _settings.Omega) * currentDensity[i, j]
+                                     + _settings.Omega / 4 * (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
+                                                             + Dx / 2 * _settings.MaterialConductivity * new Vector(deltaB[i,Math.Min(j + 1, _settings.ResolutionSpace - 1)].Z - deltaB[i,Math.Max(j - 1, 0)].Z, -deltaB[Math.Min(i + 1, _settings.ResolutionSpace - 1),j].Z + deltaB[Math.Max(i - 1, 0),j].Z, 0));
+                    
+                    delta = (currentDensity[i, j] - oldValue).Magnitude();
 
                     if (delta > _settings.Tolerance)
                     {
@@ -294,36 +244,6 @@ namespace Eddy.NET
             });
 
             return isConverged;
-        }
-
-        private void CalculateCurrentDensity()
-        {
-            Parallel.For(0, _settings.ResolutionSpace, i =>
-            {
-                for (int j = 0; j < _settings.ResolutionSpace; j++)
-                {
-                    if (isMaterial[i,j])
-                    {
-                        currentDensity[i, j] = _settings.MaterialConductivity * (E[i, j] + E0[i, j]);
-                    }
-                    else
-                    {
-                        currentDensity[i, j] = new Vector(0, 0, 0);
-                    }
-                    
-                }
-            });
-        }
-
-        private void CalculateChargeDensity()
-        {
-            Parallel.For(0, _settings.ResolutionSpace, i =>
-            {
-                for (int j = 0; j < _settings.ResolutionSpace; j++)
-                {
-                    chargeDensity[i, j] = chargeDensityPrevious[i, j] + (Dt / (2 * Dx)) * (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].X - currentDensity[Math.Max(i - 1, 0), j].X + currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].Y - currentDensity[i, Math.Max(j - 1, 0)].Y);
-                }
-            });
         }
 
         private void CalculateForce()
