@@ -36,16 +36,16 @@ namespace Eddy.NET
             Beta = Alpha * Dt / (2 * Dx * Dx);
             Mass = _settings.MaterialDensity * (4 / 3) * Math.PI * _settings.BallRadius * _settings.BallRadius * _settings.BallRadius;
 
-            A = new Vector2D[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            APrevious = new Vector2D[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            A0 = new Vector2D[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            A0Previous = new Vector2D[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
+            A = new Vector2D[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            APrevious = new Vector2D[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            A0 = new Vector2D[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            A0Previous = new Vector2D[_settings.ResolutionSpace, _settings.ResolutionSpace];
 
-            isMaterial = new bool[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
+            isMaterial = new bool[_settings.ResolutionSpace, _settings.ResolutionSpace];
 
-            Parallel.For(0, _settings.ResolutionSpace + 2, i =>
+            Parallel.For(0, _settings.ResolutionSpace, i =>
             {
-                for (int j = 0; j < _settings.ResolutionSpace + 2; j++)
+                for (int j = 0; j < _settings.ResolutionSpace; j++)
                 {
                     A[i, j] = new Vector2D(0, 0);
                     APrevious[i, j] = new Vector2D(0, 0);
@@ -120,9 +120,9 @@ namespace Eddy.NET
             Vector2D s = new Vector2D(0, 0);
             Vector2D coilOrigin = new Vector2D(_settings.CoilDistance,0);
 
-            Parallel.For(0, _settings.ResolutionSpace + 2, i =>
+            Parallel.For(0, _settings.ResolutionSpace, i =>
             {
-                for (int j = 0; j < _settings.ResolutionSpace + 2; j++)
+                for (int j = 0; j < _settings.ResolutionSpace; j++)
                 {
                     relPosition.X = (i - _settings.ResolutionSpace/2) * Dx;
                     relPosition.Y = (j - _settings.ResolutionSpace/2) * Dx;

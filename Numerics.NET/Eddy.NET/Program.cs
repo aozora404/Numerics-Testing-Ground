@@ -37,12 +37,16 @@ Distance = {settings.CoilDistance} mm
         {
             IDifferentialEquationSolver solver;
 
-            var simulationType = Prompt.Select("Choose a simulation", new[] { "Legacy", "Mk2" });
+            var simulationType = Prompt.Select("Choose a simulation", new[] { "Direct Field", "Mk2", "Jefimenko"});
 
             
-            if (simulationType == "Legacy")
+            if (simulationType == "Direct Field")
             {
-                solver = new DirectFieldSolverLegacy(settings);
+                solver = new DirectFieldSolverFinal(settings);
+            }
+            else if (simulationType == "Jefimenko")
+            {
+                solver = new JefimenkoSolver(settings);
             }
             else
             {

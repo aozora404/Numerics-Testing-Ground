@@ -65,6 +65,11 @@ namespace Eddy.NET
             return Math.Sqrt(X * X + Y * Y + Z * Z);
         }
 
+        public Vector Unit()
+        {
+            return this/Magnitude();
+        }
+
         public override string ToString()
         {
             return $"({X:f2}, {Y:f2}, {Z:f2})";

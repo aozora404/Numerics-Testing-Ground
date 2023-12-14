@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Input;
 
 namespace Eddy.NET
 {
-    internal class DirectFieldSolverFinal : IDifferentialEquationSolver
+    internal class JefimenkoSolver : IDifferentialEquationSolver
     {
         private double Dx;
         private double Dt;
@@ -21,7 +21,6 @@ namespace Eddy.NET
         private Vector[,] E0;
 
         private Vector[,] currentDensity;
-        private Vector[,] currentDensityPrevious;
         private double[,] chargeDensity;
         private double[,] chargeDensityPrevious;
 
@@ -32,13 +31,14 @@ namespace Eddy.NET
 
         private List<PhysicsOut> SimulationOutput;
 
-        public DirectFieldSolverFinal(SimulationSettings settings)
+
+        public JefimenkoSolver(SimulationSettings settings)
         {
             _settings = settings;
 
             Dx = _settings.Length / _settings.ResolutionSpace;
             Dt = (_settings.TimeEnd - _settings.TimeStart) / _settings.ResolutionTime;
-            Mass = _settings.MaterialDensity * (4 / 3) * Math.PI * _settings.BallRadius * _settings.BallRadius * _settings.BallRadius;
+            Mass = _settings.MaterialDensity * (4.0 / 3.0) * Math.PI * _settings.BallRadius * _settings.BallRadius * _settings.BallRadius;
 
             B = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
             B0 = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
@@ -46,7 +46,6 @@ namespace Eddy.NET
             E0 = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
 
             currentDensity = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            currentDensityPrevious = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
             chargeDensity = new double[_settings.ResolutionSpace, _settings.ResolutionSpace];
             chargeDensityPrevious = new double[_settings.ResolutionSpace, _settings.ResolutionSpace];
 
@@ -62,7 +61,6 @@ namespace Eddy.NET
                     E0[i, j] = new Vector(0, 0, 0);
 
                     currentDensity[i, j] = new Vector(0, 0, 0);
-                    currentDensityPrevious[i, j] = new Vector(0, 0, 0);
                     chargeDensity[i, j] = 0;
                     chargeDensityPrevious[i, j] = 0;
 
@@ -92,35 +90,78 @@ namespace Eddy.NET
 
         public void Solve()
         {
+            int steps = 0;
             double currentTime = _settings.TimeStart;
+
+                
             while (currentTime < _settings.TimeEnd && !Console.KeyAvailable)
             {
                 EMStep();
                 DynamicsStep(currentTime);
                 TimeStep();
                 currentTime += Dt;
-                Console.WriteLine($"Position: {position:f2} Velocity: {velocity:f2} Time: {currentTime:f2} Force: {force:f2}");
+                Console.WriteLine($"Position: {position:f2} mm Velocity: {velocity:f2} mm/s Force: {force:f2} mN Time: {currentTime * 1000:f2} ms");
+                steps++;
+                if (steps % 5 == 0)
+                {
+                    //UpdateVisuals();
+                    steps = 0;
+                }
             }
         }
 
         public void PrintResults()
         {
-            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\DirectFieldSolverLegacy\out{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
+            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\DirectFieldSolverILGPU\out{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
         }
 
         private void EMStep()
         {
+            LorentzShift(velocity);
             CalculateField();
             CalculateCharge();
+            LorentzShift(-velocity);
             CalculateForce();
+        }
+
+        private void LorentzShift(Vector velocity)
+        {
+            Vector EParallel, E0Parallel, BParallel, B0Parallel;
+            Vector EPerpendicular, E0Perpendicular, BPerpendicular, B0Perpendicular;
+            Vector JParallel, JPerpendicular;
+            Vector unitVelocity = velocity / velocity.Magnitude();
+            double gamma = 1.0 / Math.Sqrt(1 - (velocity.Dot(velocity)) / (_settings.c * _settings.c));
+            Parallel.For(0, _settings.ResolutionSpace, i =>
+            {
+                for (int j = 0; j < _settings.ResolutionSpace; j++)
+                {
+                    EParallel = E[i, j].Dot(unitVelocity) * unitVelocity;
+                    E0Parallel = E0[i, j].Dot(unitVelocity) * unitVelocity;
+                    BParallel = B[i, j].Dot(unitVelocity) * unitVelocity;
+                    B0Parallel = B0[i, j].Dot(unitVelocity) * unitVelocity;
+                    JParallel = currentDensity[i, j].Dot(unitVelocity) * unitVelocity;
+
+                    EPerpendicular = E[i, j] - EParallel;
+                    E0Perpendicular = E0[i, j] - E0Parallel;
+                    BPerpendicular = B[i, j] - BParallel;
+                    B0Perpendicular = B0[i, j] - B0Parallel;
+                    JPerpendicular = currentDensity[i, j] - JParallel;
+
+                    E[i, j] = EParallel + gamma * (EPerpendicular + velocity.Cross(BPerpendicular));
+                    E0[i, j] = E0Parallel + gamma * (E0Perpendicular + velocity.Cross(B0Perpendicular));
+                    B[i, j] = BParallel + gamma * (BPerpendicular - 1.0 / (_settings.c * _settings.c) * velocity.Cross(EPerpendicular));
+                    B0[i, j] = B0Parallel + gamma * (B0Perpendicular - 1.0 / (_settings.c * _settings.c) * velocity.Cross(E0Perpendicular));
+                    currentDensity[i, j] = JPerpendicular + gamma * (JParallel - chargeDensity[i, j] * velocity);
+                    chargeDensity[i, j] = gamma * (chargeDensity[i, j] - velocity.Dot(JParallel) / (_settings.c * _settings.c));
+                }
+            });
         }
 
         private void CalculateField()
         {
             EmbedB0();
             EmbedE0();
-            CalculateB();
-            CalculateE();
+            CalculateJefimenko();
         }
 
         private void CalculateCharge()
@@ -144,7 +185,6 @@ namespace Eddy.NET
 
                     s = relPosition + position - coilOrigin;
 
-
                     if (s.X > 0)
                     {
                         B0[i, j] = new Vector(0, 0, _settings.CoilMagneticFieldStrength);
@@ -164,111 +204,35 @@ namespace Eddy.NET
             {
                 for (int j = 0; j < _settings.ResolutionSpace; j++)
                 {
-                    E0[i, j] = velocity.Cross(B0[i, j]);
+                    E0[i, j] = new Vector(0, 0, 0);
                 }
             });
         }
 
-        private void CalculateB()
+        private void CalculateJefimenko()
         {
-            bool isConverged = false;
-            int iterationCount = 0;
-
-            while (!isConverged && iterationCount < _settings.MaxIterations)
+            Vector r;
+            Parallel.For(0, _settings.ResolutionSpace * _settings.ResolutionSpace, u =>
             {
-                isConverged = UpdateB();
-                iterationCount++;
-            }
-
-            Console.Write($"B Converged in {iterationCount} iterations. ");
-        }
-
-        private void CalculateE()
-        {
-            bool isConverged = false;
-            int iterationCount = 0;
-
-            while (!isConverged && iterationCount < _settings.MaxIterations)
-            {
-                isConverged = UpdateE();
-                iterationCount++;
-            }
-
-            Console.Write($"E Converged in {iterationCount} iterations. ");
-        }
-
-        private bool UpdateB()
-        {
-            bool isConverged = true;
-            double delta;
-
-            Parallel.For(0, _settings.ResolutionSpace, i =>
-            {
-                for (int j = 0; j < _settings.ResolutionSpace; j++)
+                int x = u % _settings.ResolutionSpace;
+                int y = u / _settings.ResolutionSpace;
+                E[x, y] = new Vector(0, 0, 0);
+                B[x, y] = new Vector(0, 0, 0);
+                for (int i = 0; i < _settings.ResolutionSpace; i++)
                 {
-                    Vector oldValue = B[i, j];
-
-                    if (isMaterial[i, j])
+                    for (int j = 0; j < _settings.ResolutionSpace; j++)
                     {
-                        B[i, j] = (1 - _settings.Omega) * B[i, j]
-                                     + _settings.Omega / 4 * ((B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)])
-                                                             + Dx / 2 * _settings.VacuumMagneticPermeability * new Vector(0, 0, (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].Y - currentDensity[Math.Max(i - 1, 0), j].Y) - (currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].X - currentDensity[i, Math.Max(j - 1, 0)].X)));
-                    }
-                    else
-                    {
-                        B[i, j] = (1 - _settings.Omega) * B[i, j]
-                                     + _settings.Omega / 4 * ((B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]));
-                    }
+                        if (!(x == i && y == j))
+                        {
+                            r = Dx * new Vector(i - x, j - y, 0);
 
-                    delta = (B[i, j] - oldValue).Magnitude();
-
-                    if (delta > _settings.Tolerance)
-                    {
-                        isConverged = false;
+                            E[x, y] += chargeDensity[i, j] / r.Dot(r) * r.Unit();
+                            B[x, y] += currentDensity[i, j].Cross(r.Unit()) / r.Dot(r);
+                        }
+                            
                     }
                 }
             });
-
-            return isConverged;
-        }
-
-        private bool UpdateE()
-        {
-            bool isConverged = true;
-            double delta;
-
-            Parallel.For(0, _settings.ResolutionSpace, i =>
-            {
-                
-                for (int j = 0; j < _settings.ResolutionSpace; j++)
-                {
-                    Vector oldValue = E[i, j];
-
-                    if (isMaterial[i, j])
-                    {
-                        E[i, j] = (1 - _settings.Omega) * E[i, j]
-                              + _settings.Omega / 4 * ((E[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E[Math.Max(i - 1, 0), j] + E[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E[i, Math.Max(j - 1, 0)])
-                                                      - Dx / (2 * _settings.MaterialElectricPermittivity) * new Vector(chargeDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] - chargeDensity[Math.Max(i - 1, 0), j], chargeDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] - chargeDensity[i, Math.Max(j - 1, 0)], 0)
-                                                      - (Dx * Dx / Dt) * _settings.MaterialMagneticPermeability * (currentDensity[i, j] - currentDensityPrevious[i, j])
-                                                      );
-                    }
-                    else
-                    {
-                        E[i, j] = (1 - _settings.Omega) * E[i, j]
-                              + _settings.Omega / 4 * ((E[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + E[Math.Max(i - 1, 0), j] + E[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + E[i, Math.Max(j - 1, 0)]));
-                    }
-
-
-                    delta = (E[i, j] - oldValue).Magnitude();
-
-                    if (delta > _settings.Tolerance)
-                    {
-                        isConverged = false;
-                    }
-                }
-            });
-
-            return isConverged;
         }
 
         private void CalculateCurrentDensity()
@@ -318,7 +282,7 @@ namespace Eddy.NET
                 {
                     if (isMaterial[i, j])
                     {
-                        force += Dx * Dx * Dx * currentDensity[i, j].Cross(B[i, j] + B0[i, j]);
+                        force += Dx * Dx * Dx * (currentDensity[i, j].Cross(B[i, j] + B0[i, j]));
                     }
                 }
             }
@@ -335,9 +299,7 @@ namespace Eddy.NET
 
         private void TimeStep()
         {
-            Array.Copy(currentDensity, currentDensityPrevious, currentDensityPrevious.Length);
             Array.Copy(chargeDensity, chargeDensityPrevious, chargeDensityPrevious.Length);
         }
     }
-
 }

@@ -43,21 +43,21 @@ namespace Eddy.NET
             Mass = _settings.MaterialDensity * (4 / 3) * Math.PI * _settings.BallRadius * _settings.BallRadius * _settings.BallRadius;
             omegaJ = 1.9;
 
-            B = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            BPrevious = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            B0 = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            B0Previous = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            J = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            JPrevious = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            A = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
-            APrevious = new Vector[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
+            B = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            BPrevious = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            B0 = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            B0Previous = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            J = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            JPrevious = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            A = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            APrevious = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
 
 
-            isMaterial = new bool[_settings.ResolutionSpace + 2, _settings.ResolutionSpace + 2];
+            isMaterial = new bool[_settings.ResolutionSpace, _settings.ResolutionSpace];
 
-            Parallel.For(0, _settings.ResolutionSpace + 2, i =>
+            Parallel.For(0, _settings.ResolutionSpace, i =>
             {
-                for (int j = 0; j < _settings.ResolutionSpace + 2; j++)
+                for (int j = 0; j < _settings.ResolutionSpace; j++)
                 {
                     B[i, j] = new Vector(0, 0, 0);
                     BPrevious[i, j] = new Vector(0, 0, 0);
@@ -148,9 +148,9 @@ namespace Eddy.NET
             Vector s = new Vector(0, 0, 0);
             Vector coilOrigin = new Vector(_settings.CoilDistance, 0, 0);
 
-            Parallel.For(0, _settings.ResolutionSpace + 2, i =>
+            Parallel.For(0, _settings.ResolutionSpace, i =>
             {
-                for (int j = 0; j < _settings.ResolutionSpace + 2; j++)
+                for (int j = 0; j < _settings.ResolutionSpace; j++)
                 {
                     relPosition.X = (i - _settings.ResolutionSpace / 2) * Dx;
                     relPosition.Y = (j - _settings.ResolutionSpace / 2) * Dx;

@@ -96,6 +96,7 @@ namespace Eddy.NET
             double currentTime = _settings.TimeStart;
 
             using var context = Context.CreateDefault();
+            
             using var accelerator = context.GetPreferredDevice(preferCPU: false).CreateAccelerator(context);
             
 
@@ -190,7 +191,7 @@ namespace Eddy.NET
 
                     s = relPosition + position - coilOrigin;
 
-                    if (s.Magnitude() > _settings.CoilRadius)
+                    if (s.X > 0)
                     {
                         B0[i, j] = new Vector(0, 0, _settings.CoilMagneticFieldStrength);
                     }
@@ -221,7 +222,8 @@ namespace Eddy.NET
                 ArrayView2D<Vector, Stride2D.DenseX>,
                 ArrayView2D<Vector, Stride2D.DenseX>,
                 ArrayView2D<double, Stride2D.DenseX>,
-                ArrayView2D<Vector, Stride2D.DenseX>>
+                ArrayView2D<Vector, Stride2D.DenseX>,
+                double>
                 (JefimenkoKernel);
             
             using var bufferE = accelerator.Allocate2DDenseX<Vector>(new Index2D(_settings.ResolutionSpace, _settings.ResolutionSpace));
@@ -232,7 +234,7 @@ namespace Eddy.NET
             bufferChargeDensity.CopyFromCPU(chargeDensity);
             bufferCurrentDensity.CopyFromCPU(currentDensity);
 
-            kernel(bufferE.Extent.ToIntIndex(), bufferE.View, bufferB.View, bufferChargeDensity.View, bufferCurrentDensity.View);
+            kernel(bufferE.Extent.ToIntIndex(), bufferE.View, bufferB.View, bufferChargeDensity.View, bufferCurrentDensity.View, Dx);
             
             E = bufferE.GetAsArray2D();
             B = bufferB.GetAsArray2D();
@@ -243,11 +245,27 @@ namespace Eddy.NET
             ArrayView2D<Vector, Stride2D.DenseX> E,
             ArrayView2D<Vector, Stride2D.DenseX> B,
             ArrayView2D<double, Stride2D.DenseX> chargeDensity,
-            ArrayView2D<Vector, Stride2D.DenseX> currentDensity
+            ArrayView2D<Vector, Stride2D.DenseX> currentDensity,
+            double dx
         )
         {
             int x = index.X;
             int y = index.Y;
+            Vector r = new Vector(0, 0, 0);
+
+            E[x, y] = new Vector(0, 0, 0);
+            B[x, y] = new Vector(0, 0, 0);
+
+            for(int i = 0; i < E.Length; i++)
+            {
+                for(int j = 0; j < E.Length; j++)
+                {
+                    r = dx * new Vector(i - x, j - y, 0);
+
+                    E[x, y] += chargeDensity[i, j] / r.Dot(r) * r.Unit();
+                    B[x, y] += currentDensity[i, j].Cross(r.Unit()) / r.Dot(r);
+                }
+            }
         }
 
         private void CalculateCurrentDensity()
