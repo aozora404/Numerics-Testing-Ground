@@ -230,9 +230,14 @@ namespace Eddy.NET
                 {
                     Vector oldValue = currentDensity[i, j];
 
-                    currentDensity[i, j] = (1 - _settings.Omega) * currentDensity[i, j]
-                                     + _settings.Omega / 4 * (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
-                                                             + Dx / 2 * _settings.MaterialConductivity * new Vector(deltaB[i,Math.Min(j + 1, _settings.ResolutionSpace - 1)].Z - deltaB[i,Math.Max(j - 1, 0)].Z, -deltaB[Math.Min(i + 1, _settings.ResolutionSpace - 1),j].Z + deltaB[Math.Max(i - 1, 0),j].Z, 0));
+                    if(isMaterial[i, j]){
+                        currentDensity[i, j] = (1 - _settings.Omega) * currentDensity[i, j]
+                                     + _settings.Omega / 4 * (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + currentDensity[Math.Max(i - 1, 0), j] + currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + currentDensity[i, Math.Max(j - 1, 0)]
+                                                             + Dx / 2 * _settings.MaterialConductivity * new Vector(deltaB[i,Math.Min(j + 1, _settings.ResolutionSpace - 1)].Z - deltaB[i,Math.Max(j - 1, 0)].Z, -deltaB[Math.Min(i + 1, _settings.ResolutionSpace - 1),j].Z + deltaB[Math.Max(i - 1, 0),j].Z, 0));    
+                    }else{
+                        currentDensity[i, j] = (1 - _settings.Omega) * currentDensity[i, j]
+                                     + _settings.Omega / 4 * (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + currentDensity[Math.Max(i - 1, 0), j] + currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + currentDensity[i, Math.Max(j - 1, 0)]);
+                    }
                     
                     delta = (currentDensity[i, j] - oldValue).Magnitude();
 

@@ -18,8 +18,10 @@ namespace Eddy.NET
 
         private Vector[,] B;
         private Vector[,] BPrevious;
+
         private Vector[,] B0;
         private Vector[,] B0Previous;
+        private Vector[,] B0Laplacian;
 
         private Vector[,] currentDensity;
 
@@ -36,14 +38,16 @@ namespace Eddy.NET
 
             Dx = _settings.Length / _settings.ResolutionSpace;
             Dt = (_settings.TimeEnd - _settings.TimeStart) / _settings.ResolutionTime;
-            Alpha = 0.5 * _settings.MaterialConductivity * _settings.MaterialMagneticPermeability;
+            Alpha = 0.5 / (_settings.MaterialConductivity * _settings.MaterialMagneticPermeability) * Dt / (Dx * Dx);
             Mass = _settings.MaterialDensity * (4.0 / 3.0) * Math.PI * _settings.BallRadius * _settings.BallRadius * _settings.BallRadius;
 
             B = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            B0 = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
             BPrevious = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
-            B0Previous = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
             
+            B0 = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            B0Previous = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+            B0Laplacian = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
+
             currentDensity = new Vector[_settings.ResolutionSpace, _settings.ResolutionSpace];
             
             isMaterial = new bool[_settings.ResolutionSpace, _settings.ResolutionSpace];
@@ -53,10 +57,12 @@ namespace Eddy.NET
                 for (int j = 0; j < _settings.ResolutionSpace; j++)
                 {
                     B[i, j] = new Vector(0, 0, 0);
-                    B0[i, j] = new Vector(0, 0, 0);
                     BPrevious[i, j] = new Vector(0, 0, 0);
-                    B0Previous[i, j] = new Vector(0, 0, 0);
                     
+                    B0[i, j] = new Vector(0, 0, 0);
+                    B0Previous[i, j] = new Vector(0, 0, 0);
+                    B0Laplacian[i, j] = new Vector(0, 0, 0);
+
                     currentDensity[i, j] = new Vector(0, 0, 0);
                     
                     double x = (i * 1.0 / _settings.ResolutionSpace) - 0.5;
@@ -101,12 +107,13 @@ namespace Eddy.NET
                     //UpdateVisuals();
                     steps = 0;
                 }
+                
             }
         }
 
         public void PrintResults()
         {
-            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\Gradientless\out{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
+            CSVWriter.SaveToFile(SimulationOutput, $@"C:\temp\Heat\out{DateTime.Now.ToString("yyyyMMddHHmmss")}.csv");
         }
 
         private void EMStep()
@@ -153,6 +160,14 @@ namespace Eddy.NET
 
                 }
             });
+
+            Parallel.For(0, _settings.ResolutionSpace, i =>
+            {
+                for (int j = 0; j < _settings.ResolutionSpace; j++)
+                {
+                    B0Laplacian[i, j] = (B0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B0[Math.Max(i - 1, 0), j] + B0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B0[i, Math.Max(j - 1, 0)] - 4 * B0[i, j]) / (Dx * Dx);
+                }
+            });
         }
 
         private void CalculateB()
@@ -180,9 +195,18 @@ namespace Eddy.NET
                 {
                     Vector oldValue = B[i, j];
 
-                    B[i, j] = (1 - _settings.Omega) * B[i, j]
+                    if(isMaterial[i,j]){
+                        B[i, j] = (1 - _settings.Omega) * B[i, j]
+                                     + _settings.Omega / (1 + 4 * Alpha) * (BPrevious[i, j]
+                                                                          + Alpha * (B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
+                                                                                   + BPrevious[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + BPrevious[Math.Max(i - 1, 0), j] + BPrevious[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + BPrevious[i, Math.Max(j - 1, 0)] - 4 * BPrevious[i,j])
+                                                                          + Dt / (_settings.MaterialMagneticPermeability * _settings.MaterialConductivity) * B0Laplacian[i,j]
+                                                                          - B0[i, j] + B0Previous[i, j]);
+                    } else {
+                        B[i, j] = (1 - _settings.Omega) * B[i, j]
                                      + _settings.Omega / 4 * (B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] + B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] + B[i, Math.Max(j - 1, 0)]
-                                                             - Dx / 2 * _settings.VacuumMagneticPermeability * new Vector(0, 0, (currentDensity[Math.Min(i + 1, _settings.ResolutionSpace - 1), j].Y - currentDensity[Math.Max(i - 1, 0), j].Y) - (currentDensity[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)].X - currentDensity[i, Math.Max(j - 1, 0)].X)));
+                                                            + B0Laplacian[i, j]);
+                    }
                     
                     delta = (B[i, j] - oldValue).Magnitude();
 
@@ -198,16 +222,15 @@ namespace Eddy.NET
 
         private void CalculateCurrentDensity()
         {
-            bool isConverged = false;
-            int iterationCount = 0;
-
-            while (!isConverged && iterationCount < _settings.MaxIterations)
+            Parallel.For(0, _settings.ResolutionSpace, i =>
             {
-                isConverged = UpdateCurrentDensity();
-                iterationCount++;
-            }
-
-            Console.Write($"J Converged in {iterationCount} iterations. ");
+                for (int j = 0; j < _settings.ResolutionSpace; j++)
+                {
+                    currentDensity[i,j] = 0.5 / (_settings.MaterialMagneticPermeability * Dx) * new Vector(B[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] - B[i, Math.Max(j - 1, 0)] + B0[i, Math.Min(j + 1, _settings.ResolutionSpace - 1)] - B0[i, Math.Max(j - 1, 0)], 
+                                                                                                         - B[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B[Math.Max(i - 1, 0), j] - B0[Math.Min(i + 1, _settings.ResolutionSpace - 1), j] + B0[Math.Max(i - 1, 0), j], 
+                                                                                                           0);
+                }
+            });
         }
 
         private void CalculateForce()
@@ -236,8 +259,8 @@ namespace Eddy.NET
 
         private void TimeStep()
         {
-            Array.Copy(currentDensity, currentDensityPrevious, currentDensityPrevious.Length);
-            Array.Copy(chargeDensity, chargeDensityPrevious, chargeDensityPrevious.Length);
+            Array.Copy(B, BPrevious, BPrevious.Length);
+            Array.Copy(B0, B0Previous, B0Previous.Length);
         }
     }
 
